@@ -1,26 +1,151 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..600&family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --font-inter: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-fraunces: 'Fraunces', Georgia, serif;
+  
+  /* Color Tokens - Light Mode */
+  --background: #F6F3EC;
+  --foreground: #1C1C1A;
+  
+  --primary: #C99A3E;
+  --primary-hover: #b58936;
+  --primary-soft: #EFE1C2;
+  
+  --sidebar: #1E2A22;
+  --sidebar-foreground: #F6F3EC;
+  --sidebar-active: #293A2E;
+  
+  --card: #FFFFFF;
+  --card-foreground: #1C1C1A;
+  
+  --border: #E7E2D6;
+  
+  --text-primary: #1C1C1A;
+  --text-secondary: #6B6B63;
+  
+  --success: #4C7A6B;
+  --success-soft: #E1EAE6;
+  
+  --warning: #C99A3E;
+  --warning-soft: #EFE1C2;
+  
+  --danger: #C1502E;
+  --danger-soft: #F4E2DB;
+  
+  --info: #6B6B63;
+  --info-soft: #E7E2D6;
+  
+  /* Radii */
+  --radius-card: 14px;
+  --radius-btn: 12px;
+  --radius-input: 12px;
+  --radius-dialog: 16px;
 }
 
-@theme inline {
+.dark {
+  /* Color Tokens - Dark Mode */
+  --background: #17140F;
+  --foreground: #F6F3EC;
+  
+  --primary: #d6a74b;
+  --primary-hover: #C99A3E;
+  --primary-soft: #4a3c20;
+  
+  --sidebar: #17140F;
+  --sidebar-foreground: #F6F3EC;
+  --sidebar-active: #211D16;
+  
+  --card: #211D16;
+  --card-foreground: #F6F3EC;
+  
+  --border: #3A352D;
+  
+  --text-primary: #EAE6DB;
+  --text-secondary: #A39E93;
+  
+  --success: #5C8C7D;
+  --success-soft: #2D4039;
+  
+  --warning: #d6a74b;
+  --warning-soft: #4a3c20;
+  
+  --danger: #D15F3B;
+  --danger-soft: #4D2619;
+  
+  --info: #A39E93;
+  --info-soft: #3A352D;
+}
+
+@theme {
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-fraunces);
+  
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-sidebar-bg: var(--sidebar);
+  --color-sidebar-fg: var(--sidebar-foreground);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  
+  --radius-card: var(--radius-card);
+  --radius-btn: var(--radius-btn);
+  --radius-input: var(--radius-input);
+  --radius-dialog: var(--radius-dialog);
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter);
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer base {
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-fraunces);
+  }
+}
+
+/* Custom Soft Shadows */
+.shadow-soft {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
+}
+
+.shadow-premium {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03), 0 2px 4px -2px rgba(0, 0, 0, 0.02), 0 0 0 1px rgba(0, 0, 0, 0.015);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
 }
