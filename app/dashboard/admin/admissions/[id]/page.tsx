@@ -220,9 +220,9 @@ export default function StudentProfilePage() {
 
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-4 pb-10">
       {/* Header */}
-      <div className="flex items-center gap-4 border-b pb-4">
+      <div className="flex items-center gap-3 border-b pb-3">
         <Button variant="ghost" size="sm" onClick={() => router.push("/dashboard/admin/admissions")}>
           <ArrowLeft className="h-4 w-4 mr-2" /> Back
         </Button>
@@ -230,10 +230,10 @@ export default function StudentProfilePage() {
         <Badge variant={student.status === "Active" ? "success" : "warning"}>{student.status}</Badge>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         
         {/* Left Column: Avatar & Quick Info */}
-        <div className="md:col-span-1 space-y-6">
+        <div className="md:col-span-1 space-y-4">
           <Card>
             <CardContent className="pt-6 flex flex-col items-center text-center">
               <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-border mb-4 bg-slate-100 flex items-center justify-center">
@@ -270,7 +270,7 @@ export default function StudentProfilePage() {
         </div>
 
         {/* Right Column: Detailed Tabs */}
-        <div className="md:col-span-3 space-y-6">
+        <div className="md:col-span-3 space-y-4">
           <Tabs
             activeTab={activeTab}
             onChange={setActiveTab}
@@ -290,8 +290,8 @@ export default function StudentProfilePage() {
                 <CardTitle>Academic Enrollment Details</CardTitle>
                 <CardDescription>Current class, section, subjects and teachers.</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded border">
                     <p className="text-xs text-text-secondary font-medium">Class</p>
                     <p className="font-semibold">{cls.grade || "Not Assigned"}</p>
@@ -349,8 +349,8 @@ export default function StudentProfilePage() {
               <CardHeader>
                 <CardTitle>Family & Background Information</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded border space-y-3">
                     <h4 className="font-semibold text-sm border-b pb-1 text-primary">Father's Details</h4>
                     <p className="text-sm"><span className="text-text-secondary">Name:</span> {student.details?.fatherName || student.guardianName}</p>
@@ -368,8 +368,8 @@ export default function StudentProfilePage() {
                 </div>
                 
                 {/* Parent Portal Access Section */}
-                <div className="mt-8 border-t pt-6">
-                  <h4 className="font-semibold text-base mb-4 text-primary">Portal Access Credentials</h4>
+                <div className="mt-4 border-t pt-4">
+                  <h4 className="font-semibold text-base mb-3 text-primary">Portal Access Credentials</h4>
                   {student.parents?.length > 0 ? (
                     student.parents.map((ps: any) => (
                       <div key={ps.id} className="bg-slate-50 dark:bg-slate-800 p-4 rounded border mb-4 space-y-4">
@@ -461,8 +461,8 @@ export default function StudentProfilePage() {
                   </div>
                 )}
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {/* Student Photo */}
                   <div className="border rounded p-4 flex flex-col items-center gap-3">
                     <p className="text-sm font-semibold">Student Photo</p>
@@ -528,7 +528,7 @@ export default function StudentProfilePage() {
                 <CardTitle>Transport & Route Allocation</CardTitle>
                 <CardDescription>Assign or update this student's transport route. A student can only have one active route at a time. Assigning a new route will automatically archive the previous one.</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-4">
                 
                 {/* Active Assignment Display */}
                 {currentTransport && (
@@ -591,8 +591,8 @@ export default function StudentProfilePage() {
                 )}
 
                 {/* Assignment Form */}
-                <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-md border mt-6">
-                  <h4 className="font-medium mb-4">{currentTransport ? "Assign New Route" : "Assign Route"}</h4>
+                <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-md border mt-4">
+                  <h4 className="font-medium mb-3">{currentTransport ? "Assign New Route" : "Assign Route"}</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Select
                       label="Select Route"

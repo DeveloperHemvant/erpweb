@@ -510,10 +510,10 @@ export default function TimetablePage() {
       )}
 
       {/* Main Grid Sections */}
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
 
         {/* Left Control Column */}
-        <aside className="xl:col-span-1 space-y-6">
+        <aside className="xl:col-span-1 space-y-4">
 
           {/* Active Timetable Manager */}
           <Card>
@@ -529,7 +529,7 @@ export default function TimetablePage() {
                     setActiveTimetableId(t.id);
                     toast(`Loaded ${t.name}`, { type: "info" });
                   }}
-                  className={`p-3 rounded-btn border text-left cursor-pointer transition-colors flex justify-between items-center ${activeTimetableId === t.id
+                  className={`p-2.5 rounded-btn border text-left cursor-pointer transition-colors flex justify-between items-center ${activeTimetableId === t.id
                       ? "bg-primary/5 border-primary"
                       : "bg-card border-border hover:bg-slate-50 dark:hover:bg-slate-800"
                     }`}
@@ -579,9 +579,9 @@ export default function TimetablePage() {
                 <Plus className="h-4 w-4" />
               </Button>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-2">
               {periods.map((p) => (
-                <div key={p.id} className="p-3 bg-slate-50 dark:bg-slate-800/40 border border-border rounded-btn flex items-center justify-between">
+                <div key={p.id} className="p-2.5 bg-slate-50 dark:bg-slate-800/40 border border-border rounded-btn flex items-center justify-between">
                   <div className="space-y-1">
                     <p className="text-xs font-bold text-text-primary">{p.name}</p>
                     <p className="text-[10px] text-text-secondary flex items-center gap-1">
@@ -624,9 +624,9 @@ export default function TimetablePage() {
               <table className="w-full text-xs text-left border border-border rounded-card border-collapse overflow-hidden">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-800/80 border-b border-border">
-                    <th className="p-3 font-semibold text-text-secondary border-r border-border w-24">Day</th>
+                    <th className="p-2.5 font-semibold text-text-secondary border-r border-border w-24">Day</th>
                     {periods.map((p) => (
-                      <th key={p.id} className="p-3 font-semibold text-text-secondary text-center min-w-[140px] border-r last:border-0 border-border">
+                      <th key={p.id} className="p-2.5 font-semibold text-text-secondary text-center min-w-[120px] border-r last:border-0 border-border">
                         <div>{p.name}</div>
                         <div className="text-[9px] font-normal text-text-secondary mt-0.5">{p.startTime} - {p.endTime}</div>
                       </th>
@@ -636,12 +636,12 @@ export default function TimetablePage() {
                 <tbody className="divide-y divide-border">
                   {days.map((day) => (
                     <tr key={day} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20">
-                      <td className="p-3 font-bold text-text-primary border-r border-border bg-slate-50/20 dark:bg-slate-800/10">{day}</td>
+                      <td className="p-2.5 font-bold text-text-primary border-r border-border bg-slate-50/20 dark:bg-slate-800/10">{day}</td>
                       {periods.map((p) => {
                         const cell = scheduleGrid[day]?.[p.id];
                         if (p.isBreak) {
                           return (
-                            <td key={p.id} className="p-3 text-center bg-slate-100/50 dark:bg-slate-900/40 text-text-secondary italic font-medium border-r last:border-0 border-border select-none">
+                            <td key={p.id} className="p-2.5 text-center bg-slate-100/50 dark:bg-slate-900/40 text-text-secondary italic font-medium border-r last:border-0 border-border select-none">
                               {p.name}
                             </td>
                           );
@@ -650,7 +650,7 @@ export default function TimetablePage() {
                           <td
                             key={p.id}
                             onClick={() => handleOpenCellEdit(day, p.id)}
-                            className="p-3 text-center border-r last:border-0 border-border cursor-pointer hover:bg-primary/5 transition-colors group relative"
+                            className="p-2.5 text-center border-r last:border-0 border-border cursor-pointer hover:bg-primary/5 transition-colors group relative"
                           >
                             {cell ? (
                               <div className="space-y-1">

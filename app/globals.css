@@ -6,36 +6,36 @@
   --font-fraunces: 'Fraunces', Georgia, serif;
   
   /* Color Tokens - Light Mode */
-  --background: #F6F3EC;
-  --foreground: #1C1C1A;
+  --background: #f8f9ff;
+  --foreground: #0b1c30;
   
-  --primary: #C99A3E;
-  --primary-hover: #b58936;
-  --primary-soft: #EFE1C2;
+  --primary: #031635;
+  --primary-hover: #0f2d4f;
+  --primary-soft: #d8e2ff;
   
-  --sidebar: #1E2A22;
-  --sidebar-foreground: #F6F3EC;
-  --sidebar-active: #293A2E;
+  --sidebar: #031635;
+  --sidebar-foreground: #f8f9ff;
+  --sidebar-active: #1a2b4b;
   
-  --card: #FFFFFF;
-  --card-foreground: #1C1C1A;
+  --card: #ffffff;
+  --card-foreground: #0b1c30;
   
-  --border: #E7E2D6;
+  --border: #c5c6cf;
   
-  --text-primary: #1C1C1A;
-  --text-secondary: #6B6B63;
+  --text-primary: #0b1c30;
+  --text-secondary: #44474e;
   
-  --success: #4C7A6B;
-  --success-soft: #E1EAE6;
+  --success: #006b5f;
+  --success-soft: #d7fdf5;
   
-  --warning: #C99A3E;
-  --warning-soft: #EFE1C2;
+  --warning: #8a5d00;
+  --warning-soft: #ffe08c;
   
-  --danger: #C1502E;
-  --danger-soft: #F4E2DB;
+  --danger: #ba1a1a;
+  --danger-soft: #ffdad6;
   
-  --info: #6B6B63;
-  --info-soft: #E7E2D6;
+  --info: #44474e;
+  --info-soft: #d3e4fe;
   
   /* Radii */
   --radius-card: 14px;
@@ -46,36 +46,36 @@
 
 .dark {
   /* Color Tokens - Dark Mode */
-  --background: #17140F;
-  --foreground: #F6F3EC;
+  --background: #0b1220;
+  --foreground: #e1e7f5;
   
-  --primary: #d6a74b;
-  --primary-hover: #C99A3E;
-  --primary-soft: #4a3c20;
+  --primary: #b6c6ef;
+  --primary-hover: #d8e2ff;
+  --primary-soft: #364768;
   
-  --sidebar: #17140F;
-  --sidebar-foreground: #F6F3EC;
-  --sidebar-active: #211D16;
+  --sidebar: #0b1220;
+  --sidebar-foreground: #e1e7f5;
+  --sidebar-active: #182034;
   
-  --card: #211D16;
-  --card-foreground: #F6F3EC;
+  --card: #182034;
+  --card-foreground: #e1e7f5;
   
-  --border: #3A352D;
+  --border: #44474e;
   
-  --text-primary: #EAE6DB;
-  --text-secondary: #A39E93;
+  --text-primary: #e1e7f5;
+  --text-secondary: #c5c6cf;
   
-  --success: #5C8C7D;
-  --success-soft: #2D4039;
+  --success: #3cddc7;
+  --success-soft: #005047;
   
-  --warning: #d6a74b;
-  --warning-soft: #4a3c20;
+  --warning: #e9c46a;
+  --warning-soft: #4a3c00;
   
-  --danger: #D15F3B;
-  --danger-soft: #4D2619;
+  --danger: #ffb4ab;
+  --danger-soft: #93000a;
   
-  --info: #A39E93;
-  --info-soft: #3A352D;
+  --info: #c5c6cf;
+  --info-soft: #44474e;
 }
 
 @theme {
@@ -87,6 +87,7 @@
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-primary-soft: var(--primary-soft);
+  --color-sidebar: var(--sidebar);
   --color-sidebar-bg: var(--sidebar);
   --color-sidebar-fg: var(--sidebar-foreground);
   --color-sidebar-active: var(--sidebar-active);
@@ -117,21 +118,46 @@ body {
   margin: 0;
   padding: 0;
   -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.01em;
 }
 
 @layer base {
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-fraunces);
+    font-family: var(--font-inter);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    color: var(--text-primary);
+  }
+
+  h1 { font-size: 2rem; line-height: 1.1; }
+  h2 { font-size: 1.5rem; line-height: 1.2; }
+  h3 { font-size: 1.125rem; line-height: 1.25; }
+
+  p { margin: 0; }
+}
+
+@layer utilities {
+  .bg-sidebar {
+    background-color: var(--sidebar) !important;
+  }
+
+  .text-sidebar-fg {
+    color: var(--sidebar-foreground) !important;
+  }
+
+  .bg-sidebar-active {
+    background-color: var(--sidebar-active) !important;
   }
 }
 
 /* Custom Soft Shadows */
 .shadow-soft {
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 10px 30px rgba(3, 22, 53, 0.06), 0 2px 10px rgba(3, 22, 53, 0.03);
 }
 
 .shadow-premium {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03), 0 2px 4px -2px rgba(0, 0, 0, 0.02), 0 0 0 1px rgba(0, 0, 0, 0.015);
+  box-shadow: 0 18px 40px rgba(3, 22, 53, 0.08), 0 8px 16px rgba(3, 22, 53, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 /* Custom Scrollbars */

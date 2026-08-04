@@ -28,21 +28,21 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      "inline-flex items-center justify-center font-medium rounded-btn transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary disabled:opacity-50 disabled:pointer-events-none cursor-pointer active:scale-[0.98]";
+      "inline-flex items-center justify-center font-semibold tracking-[0.01em] rounded-btn transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary disabled:opacity-50 disabled:pointer-events-none cursor-pointer active:scale-[0.98] hover:-translate-y-[1px]";
 
     const variants = {
-      primary: "bg-primary text-[#1C1C1A] hover:bg-primary-hover shadow-soft",
-      secondary: "bg-white dark:bg-slate-800 text-text-primary border border-border hover:bg-slate-50 dark:hover:bg-slate-700 shadow-soft",
-      outline: "border border-border text-text-primary hover:bg-slate-50 dark:hover:bg-slate-800/50 bg-transparent",
-      ghost: "text-text-primary hover:bg-slate-100 dark:hover:bg-slate-800 bg-transparent active:scale-100",
+      primary: "bg-primary text-white hover:bg-primary-hover shadow-soft",
+      secondary: "bg-white/95 dark:bg-slate-800/90 text-text-primary border border-border hover:bg-slate-50 dark:hover:bg-slate-700 shadow-[0_2px_8px_rgba(3,22,53,0.06)]",
+      outline: "border border-border text-text-primary hover:bg-slate-50 dark:hover:bg-slate-800/50 bg-transparent shadow-[0_1px_3px_rgba(3,22,53,0.04)]",
+      ghost: "text-text-primary hover:bg-slate-100 dark:hover:bg-slate-800 bg-transparent active:scale-100 shadow-none",
       danger: "bg-danger text-white hover:bg-red-700 shadow-soft",
     };
 
     const sizes = {
-      sm: "h-9 px-3 text-xs gap-1.5",
-      md: "h-11 px-4 text-sm gap-2",
-      lg: "h-13 px-6 text-base gap-2.5",
-      icon: "h-10 w-10 p-0",
+      sm: "h-8.5 px-3 text-xs gap-1.5",
+      md: "h-10 px-4 text-sm gap-2",
+      lg: "h-12 px-6 text-base gap-2.5",
+      icon: "h-9 w-9 p-0",
     };
 
     return (

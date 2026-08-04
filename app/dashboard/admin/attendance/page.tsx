@@ -277,7 +277,7 @@ export default function AttendancePage() {
   return (
     <>
       {/* Title */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-text-primary">
             Attendance Desk
@@ -289,10 +289,10 @@ export default function AttendancePage() {
       </div>
 
       {/* Main Content Grid */}
-      <div className="space-y-6">
+      <div className="space-y-4">
 
         {/* Right Column: Attendance Registers */}
-        <div className="w-full space-y-6">
+        <div className="w-full space-y-4">
           {/* Tabs */}
           <Tabs
             activeTab={activeTab}
@@ -306,7 +306,7 @@ export default function AttendancePage() {
             />
 
           <Card>
-            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3">
               <div>
                 <CardTitle>Roster Logs &amp; Registry</CardTitle>
                 <CardDescription>

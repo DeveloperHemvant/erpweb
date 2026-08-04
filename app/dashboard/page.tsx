@@ -53,7 +53,7 @@ export default function DashboardHome() {
   return (
     <>
       {/* Title Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-text-primary">
             Academic Performance Dashboard
@@ -73,7 +73,7 @@ export default function DashboardHome() {
       </div>
 
       {/* Metrics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           title="Total Enrollment"
           value="1,482"
@@ -105,7 +105,7 @@ export default function DashboardHome() {
       </div>
 
       {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Attendance Bar Chart */}
         <Card className="lg:col-span-2">
           <CardHeader>
@@ -163,7 +163,7 @@ export default function DashboardHome() {
       </div>
 
       {/* Recents and Announcements Column Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Recent Activity Log */}
         <Card>
           <CardHeader>
@@ -195,7 +195,7 @@ export default function DashboardHome() {
                   icon: <Wallet className="h-4 w-4 text-primary" />,
                 },
               ].map((activity) => (
-                <div key={activity.id} className="flex gap-4 items-start p-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-btn transition-colors">
+                <div key={activity.id} className="flex gap-3 items-start p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-[10px] transition-colors">
                   <div className="p-2 bg-slate-100 dark:bg-slate-700/60 rounded-btn">
                     {activity.icon}
                   </div>
@@ -237,7 +237,7 @@ export default function DashboardHome() {
                   desc: "Guardians are advised that fee portals will close collections on August 1st. Standard late charges will be active thereafter.",
                 },
               ].map((anc, idx) => (
-                <div key={idx} className="border-l-4 border-primary pl-4 space-y-1">
+                <div key={idx} className="border-l-4 border-primary pl-3 space-y-1">
                   <Badge variant="primary" className="text-[9px] uppercase tracking-wider py-0 px-2">
                     {anc.tag}
                   </Badge>

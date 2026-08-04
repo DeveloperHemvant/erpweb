@@ -74,6 +74,12 @@ interface ClassDef {
 export default function FeesPage() {
   const { toast } = useToast();
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const ERP_API_URL = `${API_URL}/erp-core`;
+
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const authHeaders: HeadersInit | undefined = token
+    ? { Authorization: `Bearer ${token}` }
+    : undefined;
 
   const [activeTab, setActiveTab] = useState("ledger");
   const [searchQuery, setSearchQuery] = useState("");
@@ -149,26 +155,34 @@ export default function FeesPage() {
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const sRes = await fetch(`${API_URL}/students`);
-      const iRes = await fetch(`${API_URL}/fees`);
-      const sesRes = await fetch(`${API_URL}/master-data/sessions`);
-      const clRes = await fetch(`${API_URL}/master-data/classes`);
-      const structRes = await fetch(`${API_URL}/fees/structures`);
+      const sRes = await fetch(`${ERP_API_URL}/students`, { headers: authHeaders });
+      const iRes = await fetch(`${ERP_API_URL}/fees`, { headers: authHeaders });
+      const sesRes = await fetch(`${API_URL}/master-data/sessions`, { headers: authHeaders });
+      const clRes = await fetch(`${API_URL}/master-data/classes`, { headers: authHeaders });
+      const structRes = await fetch(`${ERP_API_URL}/fees/structures`, { headers: authHeaders });
 
       if (sRes.ok && iRes.ok && sesRes.ok && clRes.ok && structRes.ok) {
-        setStudents(await sRes.json());
-        setInvoices(await iRes.json());
+        const studentData = await sRes.json();
+        const invoiceData = await iRes.json();
         const sesData = await sesRes.json();
-        setSessions(sesData);
         const clData = await clRes.json();
-        setClasses(clData);
         const stData = await structRes.json();
+
+        setStudents(Array.isArray(studentData) ? studentData : []);
+        setInvoices(Array.isArray(invoiceData) ? invoiceData : []);
+        setSessions(Array.isArray(sesData) ? sesData : []);
+        setClasses(Array.isArray(clData) ? clData : []);
+
         // Here we could map structures to classStructures state, but for this demo we'll keep the static one as fallback and just log real ones.
         console.log("Real structures:", stData);
 
-        if (sesData.length > 0) {
+        if (Array.isArray(sesData) && sesData.length > 0) {
           setInvoiceSessionId(sesData[0].id);
         }
+      } else {
+        const errorMessage = `Failed to load fees data: ${sRes.status}/${iRes.status}/${sesRes.status}/${clRes.status}/${structRes.status}`;
+        console.warn(errorMessage);
+        toast("Data Load Failed", { description: "Fees page could not fetch all required items.", type: "error" });
       }
     } catch {
       toast("Sync Offline", { description: "NestJS APIs offline.", type: "error" });
@@ -312,9 +326,9 @@ export default function FeesPage() {
     }
 
     try {
-      const res = await fetch(`${API_URL}/fees`, {
+      const res = await fetch(`${ERP_API_URL}/fees`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({
           studentId: invoiceStudentId,
           amount: invoiceAmount,
@@ -347,9 +361,9 @@ export default function FeesPage() {
 
     try {
       if (paymentMode === "Stripe" || paymentMode === "Razorpay") {
-        const res = await fetch(`${API_URL}/fees/webhook/online-payment`, {
+        const res = await fetch(`${ERP_API_URL}/fees/webhook/online-payment`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({
             invoiceId: selectedInvoice.id,
             amountPaid: paymentAmount,
@@ -361,9 +375,9 @@ export default function FeesPage() {
         if (!res.ok) throw new Error();
         toast("Online Payment Simulated & Processed via Webhook", { type: "success" });
       } else {
-        const res = await fetch(`${API_URL}/fees/${selectedInvoice.id}/payments`, {
+        const res = await fetch(`${ERP_API_URL}/fees/${selectedInvoice.id}/payments`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({
             amountPaid: paymentAmount,
             paymentMode,
@@ -385,7 +399,7 @@ export default function FeesPage() {
   const handleDeleteInvoice = async (id: string) => {
     if (!confirm("Are you sure you want to delete this invoice?")) return;
     try {
-      const res = await fetch(`${API_URL}/fees/${id}`, { method: "DELETE" });
+      const res = await fetch(`${ERP_API_URL}/fees/${id}`, { method: "DELETE", headers: authHeaders });
       if (!res.ok) throw new Error();
       toast("Invoice Archived", { type: "warning" });
       fetchData();
@@ -440,7 +454,7 @@ export default function FeesPage() {
   const [financialReports, setFinancialReports] = useState<any>(null);
   useEffect(() => {
     if (activeTab === "reports" && invoiceSessionId) {
-      fetch(`${API_URL}/fees/reports/financial?sessionId=${invoiceSessionId}`)
+      fetch(`${ERP_API_URL}/fees/reports/financial?sessionId=${invoiceSessionId}`, { headers: authHeaders })
         .then(res => res.json())
         .then(data => setFinancialReports(data))
         .catch(console.error);
@@ -494,7 +508,7 @@ export default function FeesPage() {
 
       {/* Class Fee Structures Tab */}
       {activeTab === "structures" && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-1">
             <CardHeader>
               <CardTitle>Structures Configurator</CardTitle>
@@ -507,7 +521,7 @@ export default function FeesPage() {
                 options={["Grade 9", "Grade 10", "Grade 11", "Grade 12"].map((g) => ({ label: g, value: g }))}
               />
 
-              <form onSubmit={handleAddComponent} className="space-y-3 pt-3 border-t">
+              <form onSubmit={handleAddComponent} className="space-y-2 pt-2 border-t">
                 <Input
                   label="Fee Component Name *"
                   placeholder="e.g. Sports Infrastructure"
@@ -574,7 +588,7 @@ export default function FeesPage() {
       {/* Ledger Tab */}
       {activeTab === "ledger" && (
         <Card>
-          <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b">
             <div>
               <CardTitle>Student Finance Ledger</CardTitle>
               <CardDescription>Roster of students, base annual calculations, and payments log.</CardDescription>
@@ -672,7 +686,7 @@ export default function FeesPage() {
                 </Table>
 
                 {/* Pagination Controls */}
-                <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                <div className="flex items-center justify-between mt-3 pt-3 border-t">
                   <p className="text-xs text-text-secondary">
                     Showing {startIndex + 1} to {Math.min(startIndex + pageSize, filteredInvoices.length)} of {filteredInvoices.length} entries
                   </p>
@@ -753,28 +767,28 @@ export default function FeesPage() {
           </CardHeader>
           <CardContent>
             {financialReports ? (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="p-4 border rounded-btn bg-slate-50 dark:bg-slate-800 text-center">
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <div className="p-3 border rounded-btn bg-slate-50 dark:bg-slate-800 text-center">
                     <p className="text-sm text-text-secondary">Total Expected</p>
                     <p className="text-xl font-bold text-primary">₹{financialReports.totalExpected.toLocaleString()}</p>
                   </div>
-                  <div className="p-4 border rounded-btn bg-slate-50 dark:bg-slate-800 text-center">
+                  <div className="p-3 border rounded-btn bg-slate-50 dark:bg-slate-800 text-center">
                     <p className="text-sm text-text-secondary">Total Collected</p>
-                    <p className="text-xl font-bold text-success">₹{financialReports.totalCollected.toLocaleString()}</p>
+                    <p className="text-lg font-bold text-success">₹{financialReports.totalCollected.toLocaleString()}</p>
                   </div>
-                  <div className="p-4 border rounded-btn bg-slate-50 dark:bg-slate-800 text-center">
+                  <div className="p-3 border rounded-btn bg-slate-50 dark:bg-slate-800 text-center">
                     <p className="text-sm text-text-secondary">Total Outstanding</p>
-                    <p className="text-xl font-bold text-danger">₹{financialReports.totalOutstanding.toLocaleString()}</p>
+                    <p className="text-lg font-bold text-danger">₹{financialReports.totalOutstanding.toLocaleString()}</p>
                   </div>
-                  <div className="p-4 border rounded-btn bg-slate-50 dark:bg-slate-800 text-center">
+                  <div className="p-3 border rounded-btn bg-slate-50 dark:bg-slate-800 text-center">
                     <p className="text-sm text-text-secondary">Collection Rate</p>
-                    <p className="text-xl font-bold text-primary">{financialReports.collectionRate}%</p>
+                    <p className="text-lg font-bold text-primary">{financialReports.collectionRate}%</p>
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="font-bold text-text-primary mb-2">Defaulters List (Overdue or Unpaid past Due Date)</h3>
+                  <h3 className="font-bold text-text-primary mb-1.5">Defaulters List (Overdue or Unpaid past Due Date)</h3>
                   <Table>
                     <TableHeader>
                       <TableRow>

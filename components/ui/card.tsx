@@ -9,8 +9,8 @@ export function Card({ children, className, hoverable = false, ...props }: CardP
   return (
     <div
       className={cn(
-        "bg-card text-card-foreground rounded-card border border-border shadow-soft p-6 transition-all duration-200",
-        hoverable && "hover:shadow-premium hover:-translate-y-[2px]",
+        "bg-card text-card-foreground rounded-[14px] border border-border shadow-[0_6px_18px_rgba(3,22,53,0.05)] p-3 md:p-4 transition-all duration-200 backdrop-blur-sm",
+        hoverable && "hover:shadow-[0_10px_24px_rgba(3,22,53,0.08)] hover:-translate-y-[1px]",
         className
       )}
       {...props}
@@ -22,7 +22,7 @@ export function Card({ children, className, hoverable = false, ...props }: CardP
 
 export function CardHeader({ children, className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("flex flex-col space-y-1.5 pb-4", className)} {...props}>
+    <div className={cn("flex flex-col space-y-1 pb-2.5 border-b border-border/70 mb-2.5", className)} {...props}>
       {children}
     </div>
   );
@@ -54,7 +54,7 @@ export function CardContent({ children, className, ...props }: React.HTMLAttribu
 
 export function CardFooter({ children, className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("flex items-center pt-4 border-t border-border mt-4", className)} {...props}>
+    <div className={cn("flex items-center pt-2.5 border-t border-border mt-2.5", className)} {...props}>
       {children}
     </div>
   );

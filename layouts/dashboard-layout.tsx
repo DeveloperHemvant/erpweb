@@ -27,7 +27,8 @@ import {
   Compass,
   BookOpen,
   MapPin,
-  Activity
+  Activity,
+  Boxes
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
@@ -65,6 +66,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
 
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const ERP_API_URL = `${API_URL}/erp-core`;
+  const MASTER_DATA_API_URL = `${API_URL}/master-data`;
+
   useEffect(() => {
     setUserProfile(getUserFromStorage());
     setMounted(true);
@@ -74,8 +79,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     const stored = localStorage.getItem("activeCampus");
     if (stored) setSchool(stored);
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-    fetch(`${API_URL}/master-data/campuses`)
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    const authHeaders = { Authorization: `Bearer ${token}` };
+
+    fetch(`${MASTER_DATA_API_URL}/campuses`, { headers: authHeaders })
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) {
@@ -89,7 +101,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       })
       .catch(() => {});
 
-    fetch(`${API_URL}/master-data/sessions`)
+    fetch(`${MASTER_DATA_API_URL}/sessions`, { headers: authHeaders })
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) {
@@ -98,7 +110,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         }
       })
       .catch(() => {});
-  }, []);
+  }, [router]);
 
   const handleCampusChange = (name: string) => {
     setSchool(name);
@@ -151,6 +163,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     { name: "Hostel & Mess", href: "/dashboard/admin/hostel", icon: <HelpCircle className="h-4 w-4" />, group: "operational", reqModule: "masterdata" },
     { name: "Health Centre", href: "/dashboard/admin/health-records", icon: <HelpCircle className="h-4 w-4" />, group: "operational", reqModule: "healthrecords" },
     { name: "Library", href: "/dashboard/admin/library", icon: <BookOpen className="h-4 w-4" />, group: "operational", reqModule: "masterdata" },
+    { name: "Inventory & Assets", href: "/dashboard/admin/inventory", icon: <Boxes className="h-4 w-4" />, group: "operational", reqModule: "masterdata" },
     { name: "ID Card Templates", href: "/dashboard/settings/idcard-templates", icon: <FileText className="h-4 w-4" />, group: "operational", reqModule: "masterdata" },
     { name: "Certificate Designer", href: "/dashboard/admin/certificates", icon: <FileText className="h-4 w-4" />, group: "operational", reqModule: "masterdata" },
     { name: "Announcements", href: "/dashboard/admin/announcements", icon: <Bell className="h-4 w-4" />, group: "operational", reqModule: "masterdata" },
@@ -175,10 +188,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const navLinkClass = (href: string) => {
     const isActive = pathname === href || (pathname.startsWith(href) && href !== "/dashboard");
     return cn(
-      "flex items-center gap-3 px-3.5 py-2.5 rounded-btn text-sm font-medium transition-all duration-150 cursor-pointer select-none border-l-[3px] border-transparent",
+      "flex items-center gap-3 px-3 py-2 rounded-btn text-sm font-medium transition-all duration-150 cursor-pointer select-none border-l-[3px] border-transparent",
       isActive
-        ? "bg-sidebar-active text-white shadow-soft border-primary"
-        : "text-slate-400 hover:text-white hover:bg-slate-800/40"
+        ? "bg-white/10 text-white shadow-soft border-primary"
+        : "text-sidebar-fg hover:text-white hover:bg-white/10"
     );
   };
 
@@ -187,14 +200,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       {/* Sidebar Desktop */}
       <aside
         className={cn(
-          "hidden md:flex flex-col bg-sidebar text-sidebar-fg border-r border-slate-800 transition-all duration-300 sticky top-0 h-screen shrink-0",
+          "hidden md:flex flex-col bg-sidebar text-sidebar-fg border-r border-white/10 transition-all duration-300 sticky top-0 h-screen shrink-0",
           isCollapsed ? "w-20" : "w-64"
         )}
       >
         {/* Header / Logo */}
-        <div className="h-16 flex items-center justify-between px-5 border-b border-slate-800">
+        <div className="h-16 flex items-center justify-between px-4 border-b border-white/10">
           <div className="flex items-center gap-2.5 overflow-hidden">
-            <div className="h-8 w-8 bg-primary rounded-btn flex items-center justify-center text-white shrink-0">
+            <div className="h-8 w-8 bg-primary rounded-[10px] flex items-center justify-center text-white shrink-0">
               <GraduationCap className="h-4.5 w-4.5" />
             </div>
             {!isCollapsed && (
@@ -205,7 +218,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </div>
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="hidden md:flex text-slate-400 hover:text-white p-1 rounded-full hover:bg-slate-800 cursor-pointer"
+            className="hidden md:flex text-slate-300 hover:text-white p-1.5 rounded-full hover:bg-primary/10 cursor-pointer"
           >
             <ChevronLeft className={cn("h-4 w-4 transition-transform", isCollapsed && "transform rotate-180")} />
           </button>
@@ -213,13 +226,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
         {/* School Switcher & Academic Year */}
         {!isCollapsed && (
-          <div className="p-4 border-b border-slate-800 space-y-2">
+          <div className="p-4 border-b border-white/10 space-y-2">
             <div className="flex flex-col gap-1">
-              <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Campus Switcher</span>
+                <span className="text-[10px] uppercase font-bold text-slate-300 tracking-wider">Campus Switcher</span>
               <select
                 value={school}
                 onChange={(e) => handleCampusChange(e.target.value)}
-                className="w-full bg-slate-900 text-xs text-white border border-slate-800 rounded-btn p-1.5 outline-none cursor-pointer"
+                className="w-full bg-white/10 text-xs text-white border border-white/10 rounded-btn p-1.5 outline-none cursor-pointer"
               >
                 {campuses.map((c) => (
                   <option key={c.id} value={c.name}>{c.name}</option>
@@ -230,11 +243,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         )}
 
         {/* Navigation Grouped */}
-        <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+        <div className="flex-1 overflow-y-auto px-2.5 py-3 space-y-4">
           {/* Core group */}
           <div className="space-y-1">
             {!isCollapsed && (
-              <span className="px-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">
+              <span className="px-3.5 text-[10px] font-bold text-slate-300 uppercase tracking-wider block mb-2">
                 Academic Modules
               </span>
             )}
@@ -251,7 +264,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           {/* Administration group */}
           <div className="space-y-1">
             {!isCollapsed && (
-              <span className="px-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">
+              <span className="px-3.5 text-[10px] font-bold text-slate-300 uppercase tracking-wider block mb-2">
                 Student & Academic Admin
               </span>
             )}
@@ -268,7 +281,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           {/* Operational group */}
           <div className="space-y-1">
             {!isCollapsed && (
-              <span className="px-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">
+              <span className="px-3.5 text-[10px] font-bold text-slate-300 uppercase tracking-wider block mb-2">
                 Staff & Operations
               </span>
             )}
@@ -285,7 +298,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           {/* System group */}
           <div className="space-y-1">
             {!isCollapsed && (
-              <span className="px-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">
+              <span className="px-3.5 text-[10px] font-bold text-slate-300 uppercase tracking-wider block mb-2">
                 System
               </span>
             )}
@@ -302,7 +315,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t border-slate-800">
+        <div className="p-3 border-t border-white/10">
           <div
             onClick={handleLogout}
             className="flex items-center gap-3 px-3.5 py-2.5 rounded-btn text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer select-none"
@@ -316,12 +329,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       {/* Main Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Topbar */}
-        <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6 z-20 shadow-soft">
+        <header className="h-15 bg-card border-b border-border flex items-center justify-between px-4 md:px-6 z-20 shadow-[0_8px_24px_rgba(3,22,53,0.06)]">
           <div className="flex items-center gap-4">
             {/* Mobile Menu Toggle */}
             <button
               onClick={() => setIsMobileOpen(!isMobileOpen)}
-              className="md:hidden text-text-primary p-1.5 rounded-btn hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              className="md:hidden text-text-primary p-2 rounded-btn hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
             >
               <Menu className="h-5 w-5" />
             </button>
@@ -337,9 +350,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 placeholder="Global search... (Ctrl+K)"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-10 pl-9 pr-12 rounded-btn bg-slate-50 dark:bg-slate-800/80 border border-border text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-text-primary"
+                className="w-full h-10 pl-9 pr-12 rounded-btn bg-slate-50/90 dark:bg-slate-800/80 border border-border text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-text-primary shadow-[0_1px_2px_rgba(3,22,53,0.04)]"
               />
-              <span className="absolute right-3 top-2.5 text-[10px] font-bold bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-text-secondary">
+              <span className="absolute right-3 top-2.5 text-[10px] font-bold bg-slate-200/80 dark:bg-slate-700 px-1.5 py-0.5 rounded text-text-secondary">
                 &#8984;K
               </span>
             </div>
@@ -363,7 +376,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 setTheme(nextTheme);
                 toast(`Theme set to ${nextTheme}`, { type: "info" });
               }}
-              className="text-text-secondary hover:text-text-primary p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              className="text-text-secondary hover:text-text-primary p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
             >
               {theme === "light" ? <Moon className="h-4.5 w-4.5" /> : <Sun className="h-4.5 w-4.5" />}
             </button>
@@ -371,7 +384,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             {/* Notifications */}
             <button
               onClick={() => toast("Notifications", { description: "You have no new alerts", type: "info" })}
-              className="relative text-text-secondary hover:text-text-primary p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              className="relative text-text-secondary hover:text-text-primary p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
             >
               <Bell className="h-4.5 w-4.5" />
               <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-danger animate-pulse" />
@@ -430,7 +443,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Content Body */}
-        <main className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 bg-background">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-7 space-y-5 bg-background">
           {children}
         </main>
       </div>

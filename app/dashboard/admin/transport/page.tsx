@@ -186,7 +186,7 @@ export default function TransportManagementPage() {
 
   return (
     <>
-      <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="mb-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-text-primary">Transport Command Center</h1>
           <p className="text-sm text-text-secondary mt-1">Manage fleet, optimize routes, and coordinate staff assignments.</p>
@@ -210,7 +210,7 @@ export default function TransportManagementPage() {
       />
 
       {activeTab === "overview" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mt-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mt-4">
           <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
             <CardContent className="p-6">
               <div className="flex justify-between items-center">
@@ -267,7 +267,7 @@ export default function TransportManagementPage() {
       )}
 
       {activeTab === "fleet" && (
-        <div className="mt-6 space-y-6">
+        <div className="mt-4 space-y-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
@@ -304,10 +304,10 @@ export default function TransportManagementPage() {
                           <Badge variant={v.status === "Active" ? "success" : "neutral"}>{v.status}</Badge>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-2 mr-2">
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 mr-1">
                                 {v.staff?.map((s: any) => (
-                                  <div key={s.id} className="w-8 h-8 rounded-full bg-primary/20 border-2 border-white flex items-center justify-center text-xs font-bold text-primary" title={`${s.staff?.fullName} - ${s.shift}`}>
+                                  <div key={s.id} className="w-8 h-8 rounded-full bg-primary/20 border-2 border-white flex items-center justify-center text-xs font-bold text-primary transition-transform hover:scale-105" title={`${s.staff?.fullName} - ${s.shift}`}>
                                     {s.staff?.fullName?.charAt(0) || "S"}
                                   </div>
                                 ))}
@@ -338,7 +338,7 @@ export default function TransportManagementPage() {
       )}
 
       {activeTab === "routes" && (
-        <div className="mt-6 space-y-6">
+        <div className="mt-4 space-y-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
@@ -360,7 +360,7 @@ export default function TransportManagementPage() {
                   <div className="p-8 text-center text-text-secondary border border-dashed rounded-lg">No routes configured yet.</div>
                 ) : (
                   routes.map(r => (
-                    <div key={r.id} className="border border-border rounded-lg p-4 bg-slate-50 dark:bg-slate-900/50">
+                    <div key={r.id} className="border border-border rounded-lg p-3 bg-slate-50 dark:bg-slate-900/50 transition-colors hover:border-primary/30 hover:bg-primary/5 shadow-[0_2px_8px_rgba(3,22,53,0.04)]">
                       <div className="flex justify-between items-center mb-4">
                         <div>
                           <h3 className="font-bold text-lg text-primary">{r.routeName}</h3>
@@ -374,7 +374,7 @@ export default function TransportManagementPage() {
                         {r.stops?.map((stop: any, idx: number) => (
                           <div key={stop.id} className="relative">
                             <div className="absolute w-3 h-3 bg-primary rounded-full -left-[22px] top-1.5 ring-4 ring-white dark:ring-slate-900" />
-                            <div className="bg-white dark:bg-slate-800 p-3 rounded-md border shadow-sm">
+                            <div className="bg-white dark:bg-slate-800 p-2.5 rounded-md border shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/5">
                               <p className="font-semibold text-sm">{stop.stopName}</p>
                               <p className="text-xs text-text-secondary mt-1">ETA: {stop.arrivalTime || "TBD"} • Index: {stop.orderIndex}</p>
                             </div>
@@ -394,7 +394,7 @@ export default function TransportManagementPage() {
       )}
 
       {activeTab === "trips" && (
-        <div className="mt-6 space-y-6">
+        <div className="mt-4 space-y-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>

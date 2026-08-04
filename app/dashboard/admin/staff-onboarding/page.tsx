@@ -39,6 +39,8 @@ export default function StaffOnboardingPage() {
   const { toast } = useToast();
   const router = useRouter();
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const authHeaders: HeadersInit | undefined = token ? { Authorization: `Bearer ${token}` } : undefined;
 
   // Mode: "directory" or "wizard"
   const [activeTab, setActiveTab] = useState("directory");
@@ -86,10 +88,15 @@ export default function StaffOnboardingPage() {
   // Fetch dynamic metadata options
   const fetchMetadata = async () => {
     try {
-      const rRes = await fetch(`${API_URL}/roles`);
-      const cRes = await fetch(`${API_URL}/master-data/campuses`);
-      const clRes = await fetch(`${API_URL}/master-data/classes`);
-      const subRes = await fetch(`${API_URL}/master-data/subjects`);
+      const rRes = await fetch(`${API_URL}/roles`, { headers: authHeaders });
+      const cRes = await fetch(`${API_URL}/master-data/campuses`, { headers: authHeaders });
+      const clRes = await fetch(`${API_URL}/master-data/classes`, { headers: authHeaders });
+      const subRes = await fetch(`${API_URL}/master-data/subjects`, { headers: authHeaders });
+
+      if (rRes.status === 401 || cRes.status === 401 || clRes.status === 401 || subRes.status === 401) {
+        router.push("/login");
+        return;
+      }
 
       if (rRes.ok && cRes.ok && clRes.ok && subRes.ok) {
         const rData = await rRes.json();
@@ -118,10 +125,13 @@ export default function StaffOnboardingPage() {
   const fetchStaffList = async () => {
     try {
       setIsLoadingStaff(true);
-      const res = await fetch(`${API_URL}/staff`);
+      const res = await fetch(`${API_URL}/staff`, { headers: authHeaders });
       if (res.ok) {
         const result = await res.json();
         setStaffList(result.data || result);
+      } else if (res.status === 401) {
+        router.push("/login");
+        return;
       }
     } catch (err) {
       toast("Error", { description: "Could not retrieve staff roster.", type: "error" });
@@ -131,9 +141,13 @@ export default function StaffOnboardingPage() {
   };
 
   useEffect(() => {
+    if (!token) {
+      router.push("/login");
+      return;
+    }
     fetchMetadata();
     fetchStaffList();
-  }, []);
+  }, [router, token]);
 
   const handleFieldChange = (field: string, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -194,7 +208,7 @@ export default function StaffOnboardingPage() {
     try {
       const res = await fetch(`${API_URL}/staff`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({
           email: form.email,
           fullName: `${form.firstName} ${form.lastName}`,
@@ -219,7 +233,7 @@ export default function StaffOnboardingPage() {
       if (activeRole?.name === "Teacher" && form.teacherSectionId && form.teacherSubjectId) {
         const allocRes = await fetch(`${API_URL}/master-data/allocations`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({
             staffId: data.id,
             sessionId: classes.find(c => c.sections?.some((s:any) => s.id === form.teacherSectionId))?.sessionId || "",
@@ -272,6 +286,7 @@ export default function StaffOnboardingPage() {
     try {
       const res = await fetch(`${API_URL}/staff/${id}`, {
         method: "DELETE",
+        headers: authHeaders,
       });
       if (!res.ok) throw new Error();
       toast("Staff Member Removed", { type: "warning" });
@@ -355,7 +370,7 @@ export default function StaffOnboardingPage() {
 
       {activeTab === "directory" && (
         <Card>
-          <CardHeader className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 pb-4 border-b">
+          <CardHeader className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 pb-3 border-b">
             <div>
               <CardTitle>Institutional Staff Directory</CardTitle>
               <CardDescription>Roster of all registered educators and system administrators.</CardDescription>
@@ -383,7 +398,7 @@ export default function StaffOnboardingPage() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="pt-4">
+          <CardContent className="pt-3">
             {isLoadingStaff ? (
               <div className="py-12 text-center text-xs text-text-secondary italic">
                 Loading staff registry from PostgreSQL...
@@ -451,7 +466,7 @@ export default function StaffOnboardingPage() {
                 </Table>
 
                 {/* Pagination Controls */}
-                <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                <div className="flex items-center justify-between mt-3 pt-3 border-t">
                   <p className="text-xs text-text-secondary">
                     Showing {startIndex + 1} to {Math.min(startIndex + pageSize, filteredStaff.length)} of {filteredStaff.length} staff members
                   </p>
@@ -481,9 +496,9 @@ export default function StaffOnboardingPage() {
       )}
 
       {activeTab === "wizard" && (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Progress Sidebar */}
-          <aside className="lg:col-span-1 bg-card rounded-card border border-border p-5 space-y-4 shadow-soft">
+          <aside className="lg:col-span-1 bg-card rounded-card border border-border p-4 space-y-3 shadow-soft">
             <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
               Onboarding Progress
             </h3>
@@ -525,7 +540,7 @@ export default function StaffOnboardingPage() {
                 <CardDescription>All fields marked with (*) are required parameters for legal payroll and database entries.</CardDescription>
               </CardHeader>
 
-              <CardContent className="space-y-6 flex-1">
+              <CardContent className="space-y-4 flex-1">
                 {/* Step 1: Personal Details */}
                 {step === 1 && (
                   <div className="space-y-5">
@@ -598,10 +613,10 @@ export default function StaffOnboardingPage() {
                       />
                     </div>
                     {roles.find(r => r.id === form.roleId)?.name === "Teacher" && (
-                      <div className="mt-4 pt-4 border-t border-border space-y-4">
+                      <div className="mt-3 pt-3 border-t border-border space-y-3">
                         
                         <h4 className="text-sm font-semibold text-text-primary flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> Teacher Qualifications & Expertise</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider block">Subject Expertise</label>
                             <div className="bg-slate-50 dark:bg-slate-900 border p-3 rounded h-40 overflow-y-auto space-y-2">

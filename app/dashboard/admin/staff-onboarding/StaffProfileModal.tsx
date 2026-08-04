@@ -12,6 +12,8 @@ import { User, FileText, Image as ImageIcon, IdCard, Download } from "lucide-rea
 
 export function StaffProfileModal({ isOpen, onClose, staffId, API_URL, onUpdated }: any) {
   const { toast } = useToast();
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const authHeaders: HeadersInit | undefined = token ? { Authorization: `Bearer ${token}` } : undefined;
   const [activeTab, setActiveTab] = useState("basic");
   const [loading, setLoading] = useState(false);
   const [staff, setStaff] = useState<any>(null);
@@ -36,7 +38,7 @@ export function StaffProfileModal({ isOpen, onClose, staffId, API_URL, onUpdated
   const fetchStaff = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/staff/${staffId}`);
+      const res = await fetch(`${API_URL}/staff/${staffId}`, { headers: authHeaders });
       if (res.ok) {
         setStaff(await res.json());
       }
@@ -48,7 +50,7 @@ export function StaffProfileModal({ isOpen, onClose, staffId, API_URL, onUpdated
 
   const fetchTemplates = async () => {
     try {
-      const res = await fetch(`${API_URL}/idcards/staff/${staffId}`);
+      const res = await fetch(`${API_URL}/idcards/staff/${staffId}`, { headers: authHeaders });
       if (res.ok) {
         const data = await res.json();
         setRenderedIdCard(data);
@@ -62,7 +64,7 @@ export function StaffProfileModal({ isOpen, onClose, staffId, API_URL, onUpdated
     try {
       const res = await fetch(`${API_URL}/staff/${staffId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({
           gender: staff.gender,
           education: staff.education,
@@ -72,6 +74,9 @@ export function StaffProfileModal({ isOpen, onClose, staffId, API_URL, onUpdated
       if (res.ok) {
         toast("Success", { description: "Profile updated", type: "success" });
         onUpdated();
+      } else if (res.status === 401) {
+        toast("Unauthorized", { description: "Please login again.", type: "error" });
+        window.location.href = "/login";
       }
     } catch (e) {
       toast("Error", { description: "Failed to update profile", type: "error" });
@@ -84,7 +89,7 @@ export function StaffProfileModal({ isOpen, onClose, staffId, API_URL, onUpdated
     try {
       const res = await fetch(`${API_URL}/staff/${staffId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({
           email: newEmail || undefined,
           passwordHash: newPassword || undefined,
@@ -95,6 +100,9 @@ export function StaffProfileModal({ isOpen, onClose, staffId, API_URL, onUpdated
         setNewEmail("");
         setNewPassword("");
         fetchStaff();
+      } else if (res.status === 401) {
+        toast("Unauthorized", { description: "Please login again.", type: "error" });
+        window.location.href = "/login";
       } else {
         toast("Error", { description: "Failed to update credentials", type: "error" });
       }
@@ -111,6 +119,7 @@ export function StaffProfileModal({ isOpen, onClose, staffId, API_URL, onUpdated
     try {
       const res = await fetch(`${API_URL}/staff/${staffId}/upload`, {
         method: "POST",
+        headers: authHeaders,
         body: formData,
       });
       if (res.ok) {
@@ -118,7 +127,7 @@ export function StaffProfileModal({ isOpen, onClose, staffId, API_URL, onUpdated
         // Now update staff profile with new URL
         await fetch(`${API_URL}/staff/${staffId}`, {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({ photoUrl: url })
         });
         toast("Success", { description: "Photo uploaded", type: "success" });
@@ -133,7 +142,7 @@ export function StaffProfileModal({ isOpen, onClose, staffId, API_URL, onUpdated
   const renderIdCard = async () => {
     if (!selectedTemplateId) return;
     try {
-      const res = await fetch(`${API_URL}/templates/render?templateId=${selectedTemplateId}&targetId=${staffId}`);
+      const res = await fetch(`${API_URL}/templates/render?templateId=${selectedTemplateId}&targetId=${staffId}`, { headers: authHeaders });
       if (res.ok) {
         setRenderedIdCard(await res.json());
       }

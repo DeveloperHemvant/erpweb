@@ -129,7 +129,7 @@ export default function EMSPage() {
   );
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 max-w-7xl mx-auto space-y-4">
       <div className="mb-2 px-4 py-2.5 rounded-lg border border-primary/20 bg-primary/5 text-xs text-text-secondary">
         <span className="font-semibold text-text-primary">Full Examination Management System (EMS).</span> Handles the complete exam
         lifecycle — question banks, seating &amp; invigilation, evaluation, moderation, grading schemes and computed results. For quick
@@ -278,7 +278,7 @@ function SetupTab({ sessions, types, templates, typeOptions, fetchAll, toast, ap
             {sessions.length === 0 ? (
               <div className="col-span-full p-8 text-center border border-dashed rounded-lg text-text-secondary">No sessions yet.</div>
             ) : sessions.map((s: any) => (
-              <div key={s.id} className="border rounded-lg p-4 bg-slate-50 dark:bg-slate-900 flex flex-col justify-between">
+              <div key={s.id} className="border rounded-lg p-3 bg-slate-50 dark:bg-slate-900 flex flex-col justify-between transition-colors hover:border-primary/30 hover:bg-primary/5">
                 <div>
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="font-semibold">{s.name}</h3>
@@ -310,7 +310,7 @@ function SetupTab({ sessions, types, templates, typeOptions, fetchAll, toast, ap
             ) : (
               <div className="divide-y divide-border">
                 {types.map((t: any) => (
-                  <div key={t.id} className="flex justify-between items-center py-2.5">
+                  <div key={t.id} className="flex justify-between items-center py-2 transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/30 rounded-md px-2 -mx-2">
                     <div>
                       <p className="font-medium text-sm">{t.name}</p>
                       {t.description && <p className="text-xs text-text-secondary">{t.description}</p>}
@@ -334,7 +334,7 @@ function SetupTab({ sessions, types, templates, typeOptions, fetchAll, toast, ap
             ) : (
               <div className="divide-y divide-border">
                 {templates.map((t: any) => (
-                  <div key={t.id} className="flex justify-between items-center py-2.5">
+                  <div key={t.id} className="flex justify-between items-center py-2 transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/30 rounded-md px-2 -mx-2">
                     <div>
                       <p className="font-medium text-sm">{t.name}</p>
                       <p className="text-xs text-text-secondary">{t.type?.name} · Total {t.totalMarks} · Pass {t.passMarks}</p>

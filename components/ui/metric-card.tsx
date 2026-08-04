@@ -17,20 +17,20 @@ export interface MetricCardProps {
 
 export function MetricCard({ title, value, description, trend, icon, className }: MetricCardProps) {
   return (
-    <Card className={cn("flex flex-col justify-between hoverable", className)}>
-      <div className="flex items-start justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
+    <Card className={cn("flex flex-col justify-between hoverable min-h-[132px]", className)}>
+      <div className="flex items-start justify-between gap-3">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-secondary">
           {title}
         </span>
         {icon && (
-          <div className="p-2 rounded-btn bg-slate-50 dark:bg-slate-800 text-text-secondary border border-border/30">
+          <div className="p-2 rounded-[10px] bg-slate-50 dark:bg-slate-800 text-text-secondary border border-border/30">
             {icon}
           </div>
         )}
       </div>
 
-      <div className="mt-4">
-        <h3 className="text-2xl font-bold tracking-tight text-text-primary">
+      <div className="mt-3">
+        <h3 className="text-xl font-bold tracking-tight text-text-primary">
           {value}
         </h3>
 

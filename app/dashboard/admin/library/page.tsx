@@ -16,6 +16,8 @@ export default function LibraryAdminPage() {
   const [activeTab, setActiveTab] = useState("inventory");
   const [books, setBooks] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
+  const [reservations, setReservations] = useState<any[]>([]);
+  const [fines, setFines] = useState<any[]>([]);
   
   // Forms
   const [isbn, setIsbn] = useState("");
@@ -30,9 +32,15 @@ export default function LibraryAdminPage() {
 
   const [returnIssueId, setReturnIssueId] = useState("");
 
+  // Reservations
+  const [reserveBookId, setReserveBookId] = useState("");
+  const [reserveEnrollmentId, setReserveEnrollmentId] = useState("");
+
   useEffect(() => {
     fetchBooks();
     fetchStudents();
+    fetchReservations();
+    fetchFines();
   }, []);
 
   const fetchBooks = async () => {
@@ -53,6 +61,24 @@ export default function LibraryAdminPage() {
       }
     } catch {
       console.error("Failed to load students");
+    }
+  };
+
+  const fetchReservations = async () => {
+    try {
+      const res = await fetch(`${API_URL}/library/reservations`);
+      if (res.ok) setReservations(await res.json());
+    } catch {
+      toast("Error", { description: "Failed to load reservations", type: "error" });
+    }
+  };
+
+  const fetchFines = async () => {
+    try {
+      const res = await fetch(`${API_URL}/library/fines?status=Unpaid`);
+      if (res.ok) setFines(await res.json());
+    } catch {
+      toast("Error", { description: "Failed to load fines", type: "error" });
     }
   };
 
@@ -114,6 +140,8 @@ export default function LibraryAdminPage() {
         toast("Success", { description: "Book returned", type: "success" });
         setReturnIssueId("");
         fetchBooks();
+        fetchReservations();
+        fetchFines();
       } else {
         const err = await res.json();
         toast("Error", { description: err.message || "Failed to return", type: "error" });
@@ -123,9 +151,61 @@ export default function LibraryAdminPage() {
     }
   };
 
+  const handleCreateReservation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`${API_URL}/library/reservations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookId: reserveBookId, enrollmentId: reserveEnrollmentId }),
+      });
+      if (res.ok) {
+        toast("Success", { description: "Reservation created.", type: "success" });
+        setReserveBookId("");
+        setReserveEnrollmentId("");
+        fetchReservations();
+      } else {
+        const err = await res.json();
+        toast("Error", { description: err.message || "Failed to reserve", type: "error" });
+      }
+    } catch {
+      toast("Error", { description: "Network error", type: "error" });
+    }
+  };
+
+  const handleCancelReservation = async (reservationId: string) => {
+    if (!confirm("Cancel this reservation?")) return;
+    try {
+      const res = await fetch(`${API_URL}/library/reservations/${reservationId}/cancel`, { method: "PATCH" });
+      if (res.ok) {
+        toast("Canceled", { type: "warning" });
+        fetchReservations();
+      }
+    } catch {
+      toast("Error", { description: "Failed to cancel reservation", type: "error" });
+    }
+  };
+
+  const handleFineUpdate = async (fineId: string, status: "Paid" | "Waived") => {
+    try {
+      const res = await fetch(`${API_URL}/library/fines/${fineId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (res.ok) {
+        toast("Updated", { description: `Fine marked ${status}.`, type: "success" });
+        fetchFines();
+      }
+    } catch {
+      toast("Error", { description: "Failed to update fine", type: "error" });
+    }
+  };
+
   // Helper arrays for selects
   const bookOptions = books.filter(b => b.available > 0).map(b => ({ label: `${b.title} (Avail: ${b.available})`, value: b.id }));
   const studentOptions = students.map(s => ({ label: s.fullName, value: s.enrollments?.[0]?.id || s.id }));
+  const allBookOptions = books.map(b => ({ label: `${b.title} (Avail: ${b.available})`, value: b.id }));
 
   return (
     <>
@@ -141,6 +221,8 @@ export default function LibraryAdminPage() {
           { id: "inventory", label: "Book Inventory", icon: <BookOpen className="w-4 h-4"/> },
           { id: "issue", label: "Issue Book", icon: <BookUp className="w-4 h-4"/> },
           { id: "returns", label: "Returns", icon: <RefreshCcw className="w-4 h-4"/> }
+          ,{ id: "reservations", label: "Reservations", icon: <BookOpen className="w-4 h-4"/> },
+          { id: "fines", label: "Fines", icon: <RefreshCcw className="w-4 h-4"/> },
         ]}
       />
 
@@ -216,6 +298,80 @@ export default function LibraryAdminPage() {
             </form>
           </CardContent>
         </Card>
+      )}
+
+      {activeTab === "reservations" && (
+        <div className="grid grid-cols-1 lg:grid-cols-[460px,1fr] gap-6 mt-6">
+          <Card>
+            <CardHeader><CardTitle>Create Reservation</CardTitle></CardHeader>
+            <CardContent>
+              <form onSubmit={handleCreateReservation} className="space-y-4">
+                <Select label="Select Book" value={reserveBookId} onChange={(e) => setReserveBookId(e.target.value)} options={[{ label: "Select...", value: "" }, ...allBookOptions]} required />
+                <Select label="Select Student (enrollment)" value={reserveEnrollmentId} onChange={(e) => setReserveEnrollmentId(e.target.value)} options={[{ label: "Select...", value: "" }, ...studentOptions]} required />
+                <Button type="submit" className="w-full">Reserve</Button>
+              </form>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle>Reservation Queue</CardTitle></CardHeader>
+            <CardContent>
+              {reservations.length === 0 ? (
+                <p className="text-sm text-text-secondary">No reservations.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {reservations.map((r) => (
+                    <li key={r.id} className="p-3 border rounded-xl text-sm bg-slate-50 dark:bg-slate-800/60">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <div className="font-semibold text-text-primary">{r.bookTitle || "Book"}</div>
+                          <div className="text-xs text-text-secondary mt-1">
+                            {r.studentName || "Student"} · Status: {r.status}
+                          </div>
+                          {r.expiresAt && <div className="text-xs text-text-secondary mt-2">Expires: {new Date(r.expiresAt).toLocaleDateString()}</div>}
+                        </div>
+                        {r.status === "Reserved" && (
+                          <Button size="sm" variant="danger" onClick={() => handleCancelReservation(r.id)}>Cancel</Button>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {activeTab === "fines" && (
+        <div className="mt-6">
+          <Card>
+            <CardHeader><CardTitle>Unpaid Fines</CardTitle></CardHeader>
+            <CardContent>
+              {fines.length === 0 ? (
+                <p className="text-sm text-text-secondary">No unpaid fines.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {fines.map((f) => (
+                    <li key={f.id} className="p-3 border rounded-xl text-sm bg-slate-50 dark:bg-slate-800/60">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <div className="font-semibold text-text-primary">{f.issue?.book?.title || "Book"}</div>
+                          <div className="text-xs text-text-secondary mt-1">
+                            {f.issue?.enrollment?.student?.fullName || "Student"} · Amount: ₹{Number(f.amount).toFixed(0)} · {f.status}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" onClick={() => handleFineUpdate(f.id, "Paid")}>Mark Paid</Button>
+                          <Button size="sm" variant="danger" onClick={() => handleFineUpdate(f.id, "Waived")}>Waive</Button>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       )}
     </>
   );

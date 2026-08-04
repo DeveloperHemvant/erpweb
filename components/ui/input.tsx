@@ -66,13 +66,13 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             disabled={disabled}
             placeholder={floating ? " " : placeholder}
             className={cn(
-              "peer w-full h-11 px-4 rounded-input border bg-white dark:bg-slate-800 text-text-primary text-sm transition-all duration-200 outline-none",
-              "border-border focus:border-primary focus:ring-2 focus:ring-primary/20",
+              "peer w-full h-10 px-3.5 rounded-input border bg-slate-50/90 dark:bg-slate-800/80 text-text-primary text-sm transition-all duration-200 outline-none shadow-[0_1px_2px_rgba(3,22,53,0.04)]",
+              "border-slate-300/80 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/25",
               leftIcon && "pl-11",
               (rightIcon || isPassword || hasStateIcon) && "pr-11",
               error && "border-danger focus:border-danger focus:ring-danger/20",
               success && "border-success focus:border-success focus:ring-success/20",
-              disabled && "opacity-60 bg-slate-50 dark:bg-slate-900 cursor-not-allowed",
+              disabled && "opacity-60 bg-slate-100 dark:bg-slate-900 cursor-not-allowed shadow-none",
               floating && "pt-5 pb-1 placeholder-transparent",
               className
             )}
@@ -84,7 +84,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             <label
               htmlFor={inputId}
               className={cn(
-                "absolute text-xs text-text-secondary left-4 top-1.5 transition-all duration-200 pointer-events-none origin-[0]",
+                "absolute text-xs text-text-secondary left-4 top-1.5 transition-all duration-200 pointer-events-none origin-left",
                 "peer-placeholder-shown:text-sm peer-placeholder-shown:top-3 peer-focus:top-1.5 peer-focus:text-xs peer-focus:text-primary",
                 leftIcon && "left-11"
               )}

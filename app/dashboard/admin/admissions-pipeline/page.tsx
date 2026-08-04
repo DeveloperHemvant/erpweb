@@ -81,8 +81,8 @@ export default function AdmissionsPipelinePage() {
   const stageVariant = (s: string) => (s === "Converted" ? "success" : s === "Lost" ? "danger" : s === "New" ? "warning" : "neutral");
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="max-w-7xl mx-auto space-y-4">
+      <div className="flex justify-between items-start">
         <div>
           <h1 className="text-3xl font-bold text-text-primary flex items-center gap-2"><UserPlus className="w-7 h-7 text-primary" /> Admissions Pipeline</h1>
           <p className="text-text-secondary mt-1">Track prospective families from first inquiry through to admission.</p>
@@ -90,7 +90,7 @@ export default function AdmissionsPipelinePage() {
         <Button variant="primary" onClick={() => setNewOpen(true)}><Plus className="w-4 h-4 mr-2" /> New Inquiry</Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {STAGES.map((stage) => (
           <Card key={stage} className="flex flex-col">
             <CardHeader className="pb-2">
@@ -98,7 +98,7 @@ export default function AdmissionsPipelinePage() {
             </CardHeader>
             <CardContent className="flex-1 space-y-2 pt-0">
               {byStage(stage).map((i: any) => (
-                <button key={i.id} onClick={() => openDetail(i.id)} className="w-full text-left border rounded-lg p-2.5 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                <button key={i.id} onClick={() => openDetail(i.id)} className="w-full text-left border rounded-lg p-2 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors hover:border-primary/40 hover:shadow-[0_2px_8px_rgba(3,22,53,0.05)]">
                   <p className="text-xs font-semibold">{i.childName}</p>
                   <p className="text-[11px] text-text-secondary">{i.gradeInterested}</p>
                   <p className="text-[11px] text-text-secondary">{i.parentName}</p>
@@ -111,7 +111,7 @@ export default function AdmissionsPipelinePage() {
       </div>
 
       <Modal isOpen={newOpen} onClose={() => setNewOpen(false)} title="New Admission Inquiry">
-        <form className="space-y-4 pt-4" onSubmit={createInquiry}>
+        <form className="space-y-3 pt-3" onSubmit={createInquiry}>
           <div className="grid grid-cols-2 gap-4">
             <Input label="Child's Name" required value={newForm.childName} onChange={(e) => setNewForm({ ...newForm, childName: e.target.value })} />
             <Input label="Grade Interested" required value={newForm.gradeInterested} onChange={(e) => setNewForm({ ...newForm, gradeInterested: e.target.value })} placeholder="e.g. Grade 6" />
