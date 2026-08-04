@@ -84,7 +84,11 @@ export default function StudentsPage() {
                   {students
                     .filter((s) => s.fullName?.toLowerCase().includes(search.toLowerCase()))
                     .map((student) => (
-                      <TableRow key={student.id}>
+                      <TableRow
+                        key={student.id}
+                        className="cursor-pointer"
+                        onClick={() => router.push(`/students/${student.id}`)}
+                      >
                         <TableCell className="font-semibold text-primary">{student.admissionNumber}</TableCell>
                         <TableCell>{student.fullName}</TableCell>
                         <TableCell>

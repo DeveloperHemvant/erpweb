@@ -14,9 +14,37 @@ export interface TimelineItem {
 export interface TimelineProps {
   items: TimelineItem[];
   className?: string;
+  loading?: boolean;
+  emptyMessage?: string;
 }
 
-export function Timeline({ items, className }: TimelineProps) {
+/**
+ * Activity Timeline (IA §16 #1) presentation layer — a read-side composition
+ * over Audit Logs + Comments + Approval Engine events for one entity. This
+ * component only renders whatever `items` it's given; assembling those items
+ * from multiple sources is the caller's job, not this component's.
+ */
+export function Timeline({ items, className, loading, emptyMessage = "No activity yet." }: TimelineProps) {
+  if (loading) {
+    return (
+      <div className={cn("space-y-3", className)} aria-busy="true">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="flex items-center gap-3 animate-pulse">
+            <div className="h-10 w-10 rounded-full bg-slate-100 dark:bg-slate-800 shrink-0" />
+            <div className="flex-1 space-y-1.5">
+              <div className="h-3 w-1/3 rounded bg-slate-100 dark:bg-slate-800" />
+              <div className="h-2.5 w-1/2 rounded bg-slate-100 dark:bg-slate-800" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return <p className={cn("text-sm text-text-secondary py-6 text-center", className)}>{emptyMessage}</p>;
+  }
+
   return (
     <div className={cn("flow-root", className)}>
       <ul className="-mb-8">
