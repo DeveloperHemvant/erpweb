@@ -7,6 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Select } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { Clock, Calendar, CheckCircle2, AlertCircle, FileText, Wallet, BookOpen, MapPin, Home } from "lucide-react";
 
@@ -32,6 +35,16 @@ function ParentDashboardContent() {
   const [library, setLibrary] = useState<any[]>([]);
   const [hostel, setHostel] = useState<any>(null);
 
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [showGrievanceModal, setShowGrievanceModal] = useState(false);
+  const [grievanceForm, setGrievanceForm] = useState({ title: "", description: "" });
+  const [submittingGrievance, setSubmittingGrievance] = useState(false);
+
+  const [showPayModal, setShowPayModal] = useState(false);
+  const [payTarget, setPayTarget] = useState<{ id: string; amount: string } | null>(null);
+  const [payForm, setPayForm] = useState({ paymentMode: "UPI", referenceNo: "" });
+  const [submittingPayment, setSubmittingPayment] = useState(false);
+
   useEffect(() => {
     if (id) {
       fetch(`${API_URL}/portal/parent/${id}/dashboard`)
@@ -49,8 +62,9 @@ function ParentDashboardContent() {
   useEffect(() => {
     if (data && data.children && data.children[activeChildIdx]) {
       const childEnrollmentId = data.children[activeChildIdx].enrollment.id;
-      
-      fetch(`${API_URL}/lms/assignments`) // In real app, pass enrollmentId
+      const childClassId = data.children[activeChildIdx].enrollment.section?.classId;
+
+      fetch(`${API_URL}/lms/assignments${childClassId ? `?classId=${childClassId}` : ""}`)
         .then(res => res.json())
         .then(setAssignments);
 
@@ -79,28 +93,77 @@ function ParentDashboardContent() {
   const childData = children[activeChildIdx];
   const { student, enrollment, attendanceRate, upcomingExams, timetable, reportCards, pendingInvoices } = childData;
 
-  const handlePayFee = async (invoiceId: string, amount: string) => {
+  // No online payment gateway (Stripe/Razorpay) is configured for this deployment, so
+  // "Pay Now" records a payment the parent already made externally (UPI/bank transfer/cheque)
+  // against the real fee ledger, instead of faking a gateway success response.
+  const openPayModal = (invoiceId: string, amount: string) => {
+    setPayTarget({ id: invoiceId, amount });
+    setPayForm({ paymentMode: "UPI", referenceNo: "" });
+    setShowPayModal(true);
+  };
+
+  const handleRecordPayment = async () => {
+    if (!payTarget) return;
+    if (!payForm.referenceNo.trim()) {
+      toast("Enter the transaction/reference number for this payment", { type: "error" });
+      return;
+    }
+    setSubmittingPayment(true);
     try {
-      const res = await fetch(`${API_URL}/erp-core/fees/webhook/online-payment`, {
+      const res = await fetch(`${API_URL}/erp-core/fees/${payTarget.id}/payments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          invoiceId,
-          amountPaid: amount,
-          paymentMode: "Stripe",
-          referenceNo: `PORTAL-PAY-${Date.now()}`,
-          gatewayResponse: { status: "succeeded", simulated: true }
+          amountPaid: payTarget.amount,
+          paymentMode: payForm.paymentMode,
+          referenceNo: payForm.referenceNo,
+          paymentDate: new Date().toISOString().slice(0, 10),
         })
       });
       if (res.ok) {
-        toast("Payment Successful!", { type: "success" });
-        // Refresh data
+        toast("Payment recorded — the school will reconcile it shortly", { type: "success" });
+        setShowPayModal(false);
+        setPayTarget(null);
         fetch(`${API_URL}/portal/parent/${id}/dashboard`).then(r => r.json()).then(setData);
       } else {
-        toast("Payment Failed", { type: "error" });
+        toast("Could not record payment", { type: "error" });
       }
     } catch {
       toast("Action failed", { type: "error" });
+    } finally {
+      setSubmittingPayment(false);
+    }
+  };
+
+  const latestTrip = transport?.stop?.route?.TransportTrip?.[0] || transport?.route?.TransportTrip?.[0];
+  const latestLog = latestTrip?.logs?.[0];
+
+  const handleFileGrievance = async () => {
+    const hostelId = hostel?.room?.hostel?.id;
+    const enrollmentId = childData?.enrollment?.id;
+    if (!hostelId || !enrollmentId) return;
+    if (!grievanceForm.title.trim() || !grievanceForm.description.trim()) {
+      toast("Please fill in both a title and description", { type: "error" });
+      return;
+    }
+    setSubmittingGrievance(true);
+    try {
+      const res = await fetch(`${API_URL}/hostel/grievances`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hostelId, enrollmentId, ...grievanceForm })
+      });
+      if (res.ok) {
+        toast("Grievance filed — the warden has been notified", { type: "success" });
+        setShowGrievanceModal(false);
+        setGrievanceForm({ title: "", description: "" });
+      } else {
+        toast("Could not file grievance", { type: "error" });
+      }
+    } catch {
+      toast("Action failed", { type: "error" });
+    } finally {
+      setSubmittingGrievance(false);
     }
   };
 
@@ -147,7 +210,7 @@ function ParentDashboardContent() {
                     <TableCell>{inv.dueDate}</TableCell>
                     <TableCell className="font-bold">₹{inv.totalAmount || inv.amount}</TableCell>
                     <TableCell>
-                      <Button variant="primary" size="sm" onClick={() => handlePayFee(inv.id, inv.totalAmount || inv.amount)}>
+                      <Button variant="primary" size="sm" onClick={() => openPayModal(inv.id, inv.totalAmount || inv.amount)}>
                         Pay Now
                       </Button>
                     </TableCell>
@@ -266,7 +329,7 @@ function ParentDashboardContent() {
                   <span className="text-text-secondary text-sm">ETA</span>
                   <span className="font-bold text-primary">{transport.stop?.arrivalTime || "07:30 AM"}</span>
                 </div>
-                <Button variant="outline" className="w-full mt-4 text-xs">View Live Map</Button>
+                <Button variant="outline" className="w-full mt-4 text-xs" onClick={() => setShowMapModal(true)}>View Live Map</Button>
               </div>
             ) : (
               <p className="text-text-secondary text-sm">Not opted for school transport.</p>
@@ -318,7 +381,7 @@ function ParentDashboardContent() {
                   <span className="text-text-secondary">Room</span>
                   <span className="font-semibold">{hostel.room.roomNumber}</span>
                 </div>
-                <Button variant="outline" className="w-full mt-2 text-xs">File Grievance</Button>
+                <Button variant="outline" className="w-full mt-2 text-xs" onClick={() => setShowGrievanceModal(true)}>File Grievance</Button>
               </div>
             ) : (
               <p className="text-text-secondary text-sm">Not enrolled in hostel.</p>
@@ -386,6 +449,82 @@ function ParentDashboardContent() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Live Map Modal */}
+      <Modal isOpen={showMapModal} onClose={() => setShowMapModal(false)} title="Live Bus Location" size="lg">
+        {latestLog && latestLog.latitude != null && latestLog.longitude != null ? (
+          <div className="space-y-3">
+            <div className="rounded-xl overflow-hidden border h-80">
+              <iframe
+                title="Live bus location"
+                className="w-full h-full"
+                src={`https://www.openstreetmap.org/export/embed.html?bbox=${latestLog.longitude - 0.01}%2C${latestLog.latitude - 0.01}%2C${latestLog.longitude + 0.01}%2C${latestLog.latitude + 0.01}&layer=mapnik&marker=${latestLog.latitude}%2C${latestLog.longitude}`}
+              />
+            </div>
+            <div className="flex justify-between text-sm text-text-secondary">
+              <span>Status: <span className="font-semibold text-text-primary">{latestLog.status}</span></span>
+              <span>Last updated: {new Date(latestLog.timestamp).toLocaleString()}</span>
+            </div>
+          </div>
+        ) : (
+          <p className="text-text-secondary text-sm py-6 text-center">
+            No live GPS ping has been received for this route's bus yet. Tracking data appears here once the driver's trip is underway.
+          </p>
+        )}
+      </Modal>
+
+      {/* File Grievance Modal */}
+      <Modal isOpen={showGrievanceModal} onClose={() => setShowGrievanceModal(false)} title="File a Hostel Grievance" size="md">
+        <div className="space-y-4">
+          <Input
+            label="Title"
+            placeholder="e.g. Broken window in room"
+            value={grievanceForm.title}
+            onChange={(e) => setGrievanceForm({ ...grievanceForm, title: e.target.value })}
+          />
+          <Textarea
+            label="Description"
+            placeholder="Describe the issue in detail"
+            value={grievanceForm.description}
+            onChange={(e) => setGrievanceForm({ ...grievanceForm, description: e.target.value })}
+          />
+          <Button variant="primary" className="w-full" onClick={handleFileGrievance} disabled={submittingGrievance}>
+            {submittingGrievance ? "Submitting..." : "Submit Grievance"}
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Pay Now Modal */}
+      <Modal isOpen={showPayModal} onClose={() => setShowPayModal(false)} title="Record Fee Payment" size="md">
+        <div className="space-y-4">
+          <p className="text-sm text-text-secondary">
+            Online card/UPI checkout isn't connected for this school yet. Pay via UPI, NetBanking, or Cheque outside the
+            app, then record the transaction here so the front office can confirm it against the invoice.
+          </p>
+          <div className="text-sm">
+            Amount due: <span className="font-bold text-primary">₹{payTarget?.amount}</span>
+          </div>
+          <Select
+            label="Payment Mode"
+            value={payForm.paymentMode}
+            onChange={(e) => setPayForm({ ...payForm, paymentMode: e.target.value })}
+            options={[
+              { label: "UPI", value: "UPI" },
+              { label: "NetBanking", value: "NetBanking" },
+              { label: "Cheque", value: "Cheque" },
+            ]}
+          />
+          <Input
+            label="Transaction / Reference Number"
+            placeholder="e.g. UPI Ref, Cheque No."
+            value={payForm.referenceNo}
+            onChange={(e) => setPayForm({ ...payForm, referenceNo: e.target.value })}
+          />
+          <Button variant="primary" className="w-full" onClick={handleRecordPayment} disabled={submittingPayment}>
+            {submittingPayment ? "Recording..." : "Record Payment"}
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

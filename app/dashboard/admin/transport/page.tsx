@@ -10,11 +10,19 @@ import { Tabs } from "@/components/ui/tabs";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
-import { Bus, Navigation, Users, Plus, ShieldCheck, Map, MapPin, Gauge, Wrench, AlertTriangle, Receipt, Trash } from "lucide-react";
+import { Bus, Navigation, Users, Plus, ShieldCheck, Map, MapPin, Gauge, Wrench, AlertTriangle, Receipt, Trash, CheckCircle, XCircle } from "lucide-react";
+import { EditVehicleModal } from "@/components/transport/EditVehicleModal";
+import { AttendanceTab } from "@/components/transport/AttendanceTab";
+import { TyresBatteriesTab } from "@/components/transport/TyresBatteriesTab";
+import { ExpenseReportView } from "@/components/transport/ExpenseReportView";
+import { computeFleetCompliance } from "@/components/transport/compliance";
 
 export default function TransportManagementPage() {
   const { toast } = useToast();
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const authHeaders: HeadersInit | undefined = token ? { Authorization: `Bearer ${token}` } : undefined;
 
   const [activeTab, setActiveTab] = useState("overview");
   const [vehicles, setVehicles] = useState<any[]>([]);
@@ -25,6 +33,7 @@ export default function TransportManagementPage() {
   const [fuelLogs, setFuelLogs] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
   const [incidents, setIncidents] = useState<any[]>([]);
+  const [accidents, setAccidents] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
 
   // Modals
@@ -38,14 +47,23 @@ export default function TransportManagementPage() {
   const [isReportIncidentOpen, setIsReportIncidentOpen] = useState(false);
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
   const [isAssignStudentOpen, setIsAssignStudentOpen] = useState(false);
+  const [isEditVehicleOpen, setIsEditVehicleOpen] = useState(false);
+  const [editingVehicle, setEditingVehicle] = useState<any>(null);
+  const [isStartTripOpen, setIsStartTripOpen] = useState(false);
 
   // Profile State
   const [vehicleProfile, setVehicleProfile] = useState<any>(null);
 
   // Forms
   const [vehicleForm, setVehicleForm] = useState({
-    vehicleNumber: "", vehicleType: "School Bus", seatingCapacity: 40, fuelType: "Diesel", status: "Active"
+    vehicleNumber: "", vehicleType: "School Bus", seatingCapacity: 40, fuelType: "Diesel", status: "Active",
+    insuranceExpiry: "", roadTaxExpiry: "", permitExpiry: "", pollutionCertificate: "", fireExtinguisherExpiry: "", fitnessCertificate: "",
   });
+  const [fuelForm, setFuelForm] = useState({ vehicleId: "", fuelType: "Diesel", litres: "", ratePerLitre: "", totalCost: "", currentOdometer: "", date: new Date().toISOString().slice(0, 10) });
+  const [serviceForm, setServiceForm] = useState({ vehicleId: "", serviceType: "Preventive", odometerReading: "", totalCost: "", serviceDate: new Date().toISOString().slice(0, 10) });
+  const [incidentForm, setIncidentForm] = useState({ kind: "Breakdown" as "Breakdown" | "Accident", vehicleId: "", date: new Date().toISOString().slice(0, 10), time: "09:00", location: "", description: "", severity: "Minor" });
+  const [expenseForm, setExpenseForm] = useState({ vehicleId: "", category: "Toll", amount: "", paymentMode: "Cash", date: new Date().toISOString().slice(0, 10) });
+  const [startTripForm, setStartTripForm] = useState({ routeId: "", tripType: "Morning", date: new Date().toISOString().slice(0, 10) });
   const [routeForm, setRouteForm] = useState<{
     routeName: string;
     distance: number | string;
@@ -66,16 +84,17 @@ export default function TransportManagementPage() {
 
   const fetchData = async () => {
     try {
-      const [vRes, rRes, sRes, stuRes, tripRes, fuelRes, srvRes, incRes, expRes] = await Promise.all([
-        fetch(`${API_URL}/transport/vehicles`),
-        fetch(`${API_URL}/transport/routes`),
-        fetch(`${API_URL}/staff`),
-        fetch(`${API_URL}/erp-core/students`),
-        fetch(`${API_URL}/transport/trips`),
-        fetch(`${API_URL}/transport/fuel`),
-        fetch(`${API_URL}/transport/services`),
-        fetch(`${API_URL}/transport/breakdowns`),
-        fetch(`${API_URL}/transport/expenses`)
+      const [vRes, rRes, sRes, stuRes, tripRes, fuelRes, srvRes, incRes, accRes, expRes] = await Promise.all([
+        fetch(`${API_URL}/transport/vehicles`, { headers: authHeaders }),
+        fetch(`${API_URL}/transport/routes`, { headers: authHeaders }),
+        fetch(`${API_URL}/staff`, { headers: authHeaders }),
+        fetch(`${API_URL}/erp-core/students`, { headers: authHeaders }),
+        fetch(`${API_URL}/transport/trips`, { headers: authHeaders }),
+        fetch(`${API_URL}/transport/fuel`, { headers: authHeaders }),
+        fetch(`${API_URL}/transport/services`, { headers: authHeaders }),
+        fetch(`${API_URL}/transport/breakdowns`, { headers: authHeaders }),
+        fetch(`${API_URL}/transport/accidents`, { headers: authHeaders }),
+        fetch(`${API_URL}/transport/expenses`, { headers: authHeaders })
       ]);
       if (vRes.ok) setVehicles(await vRes.json());
       if (rRes.ok) setRoutes(await rRes.json());
@@ -85,6 +104,7 @@ export default function TransportManagementPage() {
       if (fuelRes.ok) setFuelLogs(await fuelRes.json());
       if (srvRes.ok) setServices(await srvRes.json());
       if (incRes.ok) setIncidents(await incRes.json());
+      if (accRes.ok) setAccidents(await accRes.json());
       if (expRes.ok) setExpenses(await expRes.json());
     } catch (e) {
       console.error(e);
@@ -96,7 +116,7 @@ export default function TransportManagementPage() {
     e.preventDefault();
     try {
       const res = await fetch(`${API_URL}/transport/vehicles`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({ ...vehicleForm, seatingCapacity: parseInt(vehicleForm.seatingCapacity as any) })
       });
       if (res.ok) {
@@ -121,7 +141,7 @@ export default function TransportManagementPage() {
       };
       
       const res = await fetch(`${API_URL}/transport/routes`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify(payload)
       });
       if (res.ok) {
@@ -141,7 +161,7 @@ export default function TransportManagementPage() {
     e.preventDefault();
     try {
       const res = await fetch(`${API_URL}/transport/vehicles/${selectedVehicleId}/staff`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify(assignStaffForm)
       });
       if (res.ok) {
@@ -163,7 +183,7 @@ export default function TransportManagementPage() {
     try {
       const stopInfo = JSON.parse(assignStudentForm.stopData);
       const res = await fetch(`${API_URL}/transport/student-assignments`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({
           enrollmentId: assignStudentForm.enrollmentId,
           routeId: stopInfo.routeId,
@@ -183,6 +203,148 @@ export default function TransportManagementPage() {
       toast("Error", { description: "Failed to assign student", type: "error" });
     }
   };
+
+  const handleAddFuel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`${API_URL}/transport/fuel`, {
+        method: "POST", headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify({
+          ...fuelForm,
+          litres: parseFloat(fuelForm.litres),
+          ratePerLitre: parseFloat(fuelForm.ratePerLitre),
+          totalCost: parseFloat(fuelForm.totalCost),
+          currentOdometer: parseFloat(fuelForm.currentOdometer),
+        }),
+      });
+      if (!res.ok) throw new Error();
+      toast("Fuel logged — pending manager approval", { type: "success" });
+      setIsAddFuelOpen(false);
+      fetchData();
+    } catch {
+      toast("Error", { description: "Failed to log fuel", type: "error" });
+    }
+  };
+
+  const handleAddService = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`${API_URL}/transport/services`, {
+        method: "POST", headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify({
+          ...serviceForm,
+          odometerReading: parseFloat(serviceForm.odometerReading),
+          totalCost: serviceForm.totalCost ? parseFloat(serviceForm.totalCost) : undefined,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      toast("Service logged", { type: "success" });
+      setIsLogServiceOpen(false);
+      fetchData();
+    } catch {
+      toast("Error", { description: "Failed to log service", type: "error" });
+    }
+  };
+
+  const handleAddIncident = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const { kind, ...body } = incidentForm;
+      const endpoint = kind === "Breakdown" ? "breakdowns" : "accidents";
+      const res = await fetch(`${API_URL}/transport/${endpoint}`, {
+        method: "POST", headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error();
+      toast("Incident reported", { type: "success" });
+      setIsReportIncidentOpen(false);
+      fetchData();
+    } catch {
+      toast("Error", { description: "Failed to report incident", type: "error" });
+    }
+  };
+
+  const handleAddExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`${API_URL}/transport/expenses`, {
+        method: "POST", headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify({ ...expenseForm, amount: parseFloat(expenseForm.amount) }),
+      });
+      if (!res.ok) throw new Error();
+      toast("Expense recorded — pending manager approval", { type: "success" });
+      setIsAddExpenseOpen(false);
+      fetchData();
+    } catch {
+      toast("Error", { description: "Failed to record expense", type: "error" });
+    }
+  };
+
+  const handleStartTrip = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const route = routes.find((r) => r.id === startTripForm.routeId);
+    if (!route?.vehicleId) {
+      toast("Error", { description: "Selected route has no vehicle assigned.", type: "error" });
+      return;
+    }
+    try {
+      const res = await fetch(`${API_URL}/transport/trips`, {
+        method: "POST", headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify({ routeId: startTripForm.routeId, vehicleId: route.vehicleId, tripType: startTripForm.tripType, date: startTripForm.date, status: "In Progress" }),
+      });
+      if (!res.ok) throw new Error();
+      toast("Trip started", { type: "success" });
+      setIsStartTripOpen(false);
+      fetchData();
+    } catch {
+      toast("Error", { description: "Failed to start trip", type: "error" });
+    }
+  };
+
+  const handleResolveFuel = async (id: string, status: "Approved" | "Rejected") => {
+    try {
+      const res = await fetch(`${API_URL}/transport/fuel/${id}/resolve`, {
+        method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) throw new Error();
+      toast(status === "Approved" ? "Fuel log approved" : "Fuel log rejected", { type: status === "Approved" ? "success" : "warning" });
+      fetchData();
+    } catch {
+      toast("Error", { description: "Failed to resolve fuel log", type: "error" });
+    }
+  };
+
+  const handleResolveExpense = async (id: string, status: "Approved" | "Rejected") => {
+    try {
+      const res = await fetch(`${API_URL}/transport/expenses/${id}/resolve`, {
+        method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) throw new Error();
+      toast(status === "Approved" ? "Expense approved" : "Expense rejected", { type: status === "Approved" ? "success" : "warning" });
+      fetchData();
+    } catch {
+      toast("Error", { description: "Failed to resolve expense", type: "error" });
+    }
+  };
+
+  const handleAcknowledgeIncident = async (id: string, kind: "Breakdown" | "Accident") => {
+    try {
+      const endpoint = kind === "Breakdown" ? "breakdowns" : "accidents";
+      const res = await fetch(`${API_URL}/transport/${endpoint}/${id}/acknowledge`, {
+        method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) throw new Error();
+      toast("Incident acknowledged", { type: "success" });
+      fetchData();
+    } catch {
+      toast("Error", { description: "Failed to acknowledge incident", type: "error" });
+    }
+  };
+
+  const fleetCompliance = computeFleetCompliance(vehicles);
 
   return (
     <>
@@ -254,8 +416,13 @@ export default function TransportManagementPage() {
             <CardContent className="p-6">
               <div className="flex justify-between items-center">
                 <div>
-                  <p className="text-sm font-medium text-text-secondary">Safety Compliance</p>
-                  <h3 className="text-3xl font-bold mt-1 text-success">98%</h3>
+                  <p className="text-sm font-medium text-text-secondary">Document Compliance</p>
+                  <h3 className={`text-3xl font-bold mt-1 ${fleetCompliance.compliancePercent === null ? "text-text-secondary" : fleetCompliance.compliancePercent >= 90 ? "text-success" : "text-warning"}`}>
+                    {fleetCompliance.compliancePercent !== null ? `${fleetCompliance.compliancePercent}%` : "—"}
+                  </h3>
+                  {fleetCompliance.missingDataCount > 0 && (
+                    <p className="text-xs text-text-secondary mt-1">{fleetCompliance.missingDataCount} vehicle(s) missing document data</p>
+                  )}
                 </div>
                 <div className="p-3 bg-success/20 rounded-full text-success">
                   <ShieldCheck className="w-6 h-6" />
@@ -313,10 +480,11 @@ export default function TransportManagementPage() {
                                 ))}
                             </div>
                             <Button size="sm" variant="outline" onClick={() => { setSelectedVehicleId(v.id); setIsAssignStaffOpen(true); }}>Assign Crew</Button>
-                            
+                            <Button size="sm" variant="outline" onClick={() => { setEditingVehicle(v); setIsEditVehicleOpen(true); }}>Edit</Button>
+
                             <Button size="sm" variant="primary" onClick={async () => {
                               try {
-                                const res = await fetch(`${API_URL}/transport/vehicles/${v.id}/profile`);
+                                const res = await fetch(`${API_URL}/transport/vehicles/${v.id}/profile`, { headers: authHeaders });
                                 if (res.ok) {
                                   setVehicleProfile(await res.json());
                                   setIsVehicleProfileOpen(true);
@@ -401,7 +569,7 @@ export default function TransportManagementPage() {
                 <CardTitle>Live Trips & GPS Tracking</CardTitle>
                 <p className="text-sm text-text-secondary mt-1">Monitor active bus trips and location logs.</p>
               </div>
-              <Button variant="primary">
+              <Button variant="primary" onClick={() => setIsStartTripOpen(true)}>
                 <Map className="w-4 h-4 mr-2" /> Start Trip
               </Button>
             </CardHeader>
@@ -436,24 +604,7 @@ export default function TransportManagementPage() {
       )}
 
       {activeTab === "attendance" && (
-        <div className="mt-6 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Student Bus Attendance</CardTitle>
-              <p className="text-sm text-text-secondary mt-1">Verify students boarding and dropping off.</p>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed rounded-lg bg-slate-50 dark:bg-slate-900/50">
-                <Users className="w-12 h-12 text-slate-300 mb-4" />
-                <h3 className="text-lg font-medium text-slate-700 dark:text-slate-300">Scanner Ready</h3>
-                <p className="text-sm text-slate-500 max-w-md text-center mt-2">
-                  Waiting for RFID/NFC scans from the bus terminal. To manually mark attendance, select an active trip.
-                </p>
-                <Button variant="outline" className="mt-6">Select Trip to Manual Mark</Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <AttendanceTab trips={trips} apiUrl={API_URL} authHeaders={authHeaders} />
       )}
 
       {activeTab === "fuel" && (
@@ -478,11 +629,13 @@ export default function TransportManagementPage() {
                     <TableHead>Litres</TableHead>
                     <TableHead>Total Cost</TableHead>
                     <TableHead>Mileage (km/l)</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {fuelLogs.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="text-center py-6 text-text-secondary">No fuel logs recorded.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={8} className="text-center py-6 text-text-secondary">No fuel logs recorded.</TableCell></TableRow>
                   ) : (
                     fuelLogs.map(f => (
                       <TableRow key={f.id}>
@@ -498,11 +651,27 @@ export default function TransportManagementPage() {
                             <span className="text-xs text-text-secondary">Need 2 logs</span>
                           )}
                         </TableCell>
+                        <TableCell>
+                          <Badge variant={f.status === "Approved" ? "success" : f.status === "Rejected" ? "danger" : "warning"}>{f.status}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {f.status === "Pending" && (
+                            <div className="flex justify-end gap-1.5">
+                              <Button size="sm" variant="outline" onClick={() => handleResolveFuel(f.id, "Approved")}><CheckCircle className="w-3.5 h-3.5" /></Button>
+                              <Button size="sm" variant="outline" onClick={() => handleResolveFuel(f.id, "Rejected")}><XCircle className="w-3.5 h-3.5" /></Button>
+                            </div>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))
                   )}
                 </TableBody>
               </Table>
+              {fuelLogs.length > 0 && (
+                <p className="text-sm font-semibold text-text-secondary mt-3 text-right">
+                  Total: ₹{fuelLogs.reduce((sum, f) => sum + Number(f.totalCost), 0).toLocaleString("en-IN")}
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -549,6 +718,8 @@ export default function TransportManagementPage() {
               </Table>
             </CardContent>
           </Card>
+
+          <TyresBatteriesTab vehicles={vehicles} apiUrl={API_URL} authHeaders={authHeaders} />
         </div>
       )}
 
@@ -568,26 +739,39 @@ export default function TransportManagementPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Type</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Vehicle</TableHead>
                     <TableHead>Driver</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {incidents.length === 0 ? (
-                    <TableRow><TableCell colSpan={5} className="text-center py-6 text-text-secondary">No incidents reported. (Safe!)</TableCell></TableRow>
+                  {incidents.length === 0 && accidents.length === 0 ? (
+                    <TableRow><TableCell colSpan={7} className="text-center py-6 text-text-secondary">No incidents reported. (Safe!)</TableCell></TableRow>
                   ) : (
-                    incidents.map(i => (
-                      <TableRow key={i.id}>
-                        <TableCell>{i.date}</TableCell>
-                        <TableCell className="font-medium">{i.vehicle?.vehicleNumber}</TableCell>
-                        <TableCell>{i.driver?.fullName || "N/A"}</TableCell>
-                        <TableCell>{i.description}</TableCell>
-                        <TableCell><Badge variant="warning">{i.status}</Badge></TableCell>
-                      </TableRow>
-                    ))
+                    [
+                      ...incidents.map((i) => ({ ...i, kind: "Breakdown" as const })),
+                      ...accidents.map((a) => ({ ...a, kind: "Accident" as const })),
+                    ]
+                      .sort((a, b) => b.date.localeCompare(a.date))
+                      .map((i) => (
+                        <TableRow key={`${i.kind}-${i.id}`}>
+                          <TableCell><Badge variant={i.kind === "Accident" ? "danger" : "warning"}>{i.kind}</Badge></TableCell>
+                          <TableCell>{i.date}</TableCell>
+                          <TableCell className="font-medium">{i.vehicle?.vehicleNumber}</TableCell>
+                          <TableCell>{i.driver?.fullName || "N/A"}</TableCell>
+                          <TableCell>{i.description}</TableCell>
+                          <TableCell><Badge variant={i.status === "Resolved" || i.status === "Closed" ? "success" : i.status === "Acknowledged" ? "neutral" : "warning"}>{i.status}</Badge></TableCell>
+                          <TableCell className="text-right">
+                            {(i.status === "Reported" || i.status === "Under Investigation") && (
+                              <Button size="sm" variant="outline" onClick={() => handleAcknowledgeIncident(i.id, i.kind)}>Acknowledge</Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))
                   )}
                 </TableBody>
               </Table>
@@ -616,11 +800,13 @@ export default function TransportManagementPage() {
                     <TableHead>Category</TableHead>
                     <TableHead>Amount</TableHead>
                     <TableHead>Payment Mode</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {expenses.length === 0 ? (
-                    <TableRow><TableCell colSpan={4} className="text-center py-6 text-text-secondary">No expenses recorded.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="text-center py-6 text-text-secondary">No expenses recorded.</TableCell></TableRow>
                   ) : (
                     expenses.map(e => (
                       <TableRow key={e.id}>
@@ -628,13 +814,31 @@ export default function TransportManagementPage() {
                         <TableCell>{e.category}</TableCell>
                         <TableCell className="font-medium">₹{e.amount}</TableCell>
                         <TableCell>{e.paymentMode}</TableCell>
+                        <TableCell>
+                          <Badge variant={e.status === "Approved" ? "success" : e.status === "Rejected" ? "danger" : "warning"}>{e.status}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {e.status === "Pending" && (
+                            <div className="flex justify-end gap-1.5">
+                              <Button size="sm" variant="outline" onClick={() => handleResolveExpense(e.id, "Approved")}><CheckCircle className="w-3.5 h-3.5" /></Button>
+                              <Button size="sm" variant="outline" onClick={() => handleResolveExpense(e.id, "Rejected")}><XCircle className="w-3.5 h-3.5" /></Button>
+                            </div>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))
                   )}
                 </TableBody>
               </Table>
+              {expenses.length > 0 && (
+                <p className="text-sm font-semibold text-text-secondary mt-3 text-right">
+                  Total: ₹{expenses.reduce((sum, e) => sum + Number(e.amount), 0).toLocaleString("en-IN")}
+                </p>
+              )}
             </CardContent>
           </Card>
+
+          <ExpenseReportView apiUrl={API_URL} authHeaders={authHeaders} />
         </div>
       )}
 
@@ -647,6 +851,19 @@ export default function TransportManagementPage() {
             <Input label="Capacity" type="number" value={vehicleForm.seatingCapacity} onChange={e => setVehicleForm({...vehicleForm, seatingCapacity: parseInt(e.target.value)})} required />
           </div>
           <Select label="Fuel Type" value={vehicleForm.fuelType} onChange={e => setVehicleForm({...vehicleForm, fuelType: e.target.value})} options={[{label: "Diesel", value: "Diesel"}, {label: "Petrol", value: "Petrol"}, {label: "CNG", value: "CNG"}, {label: "EV", value: "EV"}]} />
+
+          <div className="border-t pt-4">
+            <h4 className="font-semibold text-sm mb-2">Compliance Documents (optional — can also be added later via Edit)</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <Input label="Insurance Expiry" type="date" value={vehicleForm.insuranceExpiry} onChange={e => setVehicleForm({...vehicleForm, insuranceExpiry: e.target.value})} />
+              <Input label="Road Tax Expiry" type="date" value={vehicleForm.roadTaxExpiry} onChange={e => setVehicleForm({...vehicleForm, roadTaxExpiry: e.target.value})} />
+              <Input label="Permit Expiry" type="date" value={vehicleForm.permitExpiry} onChange={e => setVehicleForm({...vehicleForm, permitExpiry: e.target.value})} />
+              <Input label="Pollution Cert. Expiry" type="date" value={vehicleForm.pollutionCertificate} onChange={e => setVehicleForm({...vehicleForm, pollutionCertificate: e.target.value})} />
+              <Input label="Fire Extinguisher Expiry" type="date" value={vehicleForm.fireExtinguisherExpiry} onChange={e => setVehicleForm({...vehicleForm, fireExtinguisherExpiry: e.target.value})} />
+              <Input label="Fitness Cert. Expiry" type="date" value={vehicleForm.fitnessCertificate} onChange={e => setVehicleForm({...vehicleForm, fitnessCertificate: e.target.value})} />
+            </div>
+          </div>
+
           <div className="flex justify-end pt-4"><Button type="submit" variant="primary">Register Vehicle</Button></div>
         </form>
       </Modal>
@@ -820,46 +1037,83 @@ export default function TransportManagementPage() {
       </Modal>
 
       <Modal isOpen={isAddFuelOpen} onClose={() => setIsAddFuelOpen(false)} title="Log Fuel">
-        <form className="space-y-4 pt-4" onSubmit={e => { e.preventDefault(); toast("Success", { description: "Fuel Logged", type: "success" }); setIsAddFuelOpen(false); }}>
-          <Select label="Select Vehicle" options={vehicles.map(v => ({ label: v.vehicleNumber, value: v.id }))} />
+        <form className="space-y-4 pt-4" onSubmit={handleAddFuel}>
+          <Select label="Select Vehicle" value={fuelForm.vehicleId} onChange={e => setFuelForm({ ...fuelForm, vehicleId: e.target.value })} options={[{ label: "Select vehicle", value: "" }, ...vehicles.map(v => ({ label: v.vehicleNumber, value: v.id }))]} required />
+          <Select label="Fuel Type" value={fuelForm.fuelType} onChange={e => setFuelForm({ ...fuelForm, fuelType: e.target.value })} options={[{ label: "Diesel", value: "Diesel" }, { label: "Petrol", value: "Petrol" }, { label: "CNG", value: "CNG" }]} />
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Litres" type="number" step="0.1" required />
-            <Input label="Total Cost (₹)" type="number" required />
+            <Input label="Litres" type="number" step="0.1" value={fuelForm.litres} onChange={e => setFuelForm({ ...fuelForm, litres: e.target.value })} required />
+            <Input label="Rate per Litre (₹)" type="number" step="0.01" value={fuelForm.ratePerLitre} onChange={e => setFuelForm({ ...fuelForm, ratePerLitre: e.target.value })} required />
           </div>
-          <Input label="Date" type="date" required />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Total Cost (₹)" type="number" value={fuelForm.totalCost} onChange={e => setFuelForm({ ...fuelForm, totalCost: e.target.value })} required />
+            <Input label="Current Odometer" type="number" value={fuelForm.currentOdometer} onChange={e => setFuelForm({ ...fuelForm, currentOdometer: e.target.value })} required />
+          </div>
+          <Input label="Date" type="date" value={fuelForm.date} onChange={e => setFuelForm({ ...fuelForm, date: e.target.value })} required />
           <div className="flex justify-end pt-4"><Button type="submit" variant="primary">Submit</Button></div>
         </form>
       </Modal>
 
       <Modal isOpen={isLogServiceOpen} onClose={() => setIsLogServiceOpen(false)} title="Log Maintenance Service">
-        <form className="space-y-4 pt-4" onSubmit={e => { e.preventDefault(); toast("Success", { description: "Service Logged", type: "success" }); setIsLogServiceOpen(false); }}>
-          <Select label="Select Vehicle" options={vehicles.map(v => ({ label: v.vehicleNumber, value: v.id }))} />
+        <form className="space-y-4 pt-4" onSubmit={handleAddService}>
+          <Select label="Select Vehicle" value={serviceForm.vehicleId} onChange={e => setServiceForm({ ...serviceForm, vehicleId: e.target.value })} options={[{ label: "Select vehicle", value: "" }, ...vehicles.map(v => ({ label: v.vehicleNumber, value: v.id }))]} required />
           <div className="grid grid-cols-2 gap-4">
-            <Select label="Service Type" options={[{label:"Preventive", value:"Preventive"}, {label:"Repair", value:"Repair"}]} />
-            <Input label="Total Cost (₹)" type="number" required />
+            <Select label="Service Type" value={serviceForm.serviceType} onChange={e => setServiceForm({ ...serviceForm, serviceType: e.target.value })} options={[{ label: "Preventive", value: "Preventive" }, { label: "Repair", value: "Repair" }, { label: "Ad-hoc", value: "Ad-hoc" }]} />
+            <Input label="Total Cost (₹)" type="number" value={serviceForm.totalCost} onChange={e => setServiceForm({ ...serviceForm, totalCost: e.target.value })} />
           </div>
-          <Input label="Date" type="date" required />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Odometer Reading" type="number" value={serviceForm.odometerReading} onChange={e => setServiceForm({ ...serviceForm, odometerReading: e.target.value })} required />
+            <Input label="Date" type="date" value={serviceForm.serviceDate} onChange={e => setServiceForm({ ...serviceForm, serviceDate: e.target.value })} required />
+          </div>
           <div className="flex justify-end pt-4"><Button type="submit" variant="primary">Submit</Button></div>
         </form>
       </Modal>
 
-      <Modal isOpen={isReportIncidentOpen} onClose={() => setIsReportIncidentOpen(false)} title="Report Incident/Breakdown">
-        <form className="space-y-4 pt-4" onSubmit={e => { e.preventDefault(); toast("Success", { description: "Incident Reported", type: "success" }); setIsReportIncidentOpen(false); }}>
-          <Select label="Select Vehicle" options={vehicles.map(v => ({ label: v.vehicleNumber, value: v.id }))} />
-          <Input label="Date" type="date" required />
-          <Input label="Description" required />
+      <Modal isOpen={isReportIncidentOpen} onClose={() => setIsReportIncidentOpen(false)} title="Report Incident">
+        <form className="space-y-4 pt-4" onSubmit={handleAddIncident}>
+          <Select label="Type" value={incidentForm.kind} onChange={e => setIncidentForm({ ...incidentForm, kind: e.target.value as "Breakdown" | "Accident" })} options={[{ label: "Breakdown", value: "Breakdown" }, { label: "Accident", value: "Accident" }]} />
+          <Select label="Select Vehicle" value={incidentForm.vehicleId} onChange={e => setIncidentForm({ ...incidentForm, vehicleId: e.target.value })} options={[{ label: "Select vehicle", value: "" }, ...vehicles.map(v => ({ label: v.vehicleNumber, value: v.id }))]} required />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Date" type="date" value={incidentForm.date} onChange={e => setIncidentForm({ ...incidentForm, date: e.target.value })} required />
+            <Input label="Time" type="time" value={incidentForm.time} onChange={e => setIncidentForm({ ...incidentForm, time: e.target.value })} required />
+          </div>
+          <Input label="Location" value={incidentForm.location} onChange={e => setIncidentForm({ ...incidentForm, location: e.target.value })} />
+          {incidentForm.kind === "Accident" && (
+            <Select label="Severity" value={incidentForm.severity} onChange={e => setIncidentForm({ ...incidentForm, severity: e.target.value })} options={[{ label: "Minor", value: "Minor" }, { label: "Major", value: "Major" }, { label: "Fatal", value: "Fatal" }]} />
+          )}
+          <Input label="Description" value={incidentForm.description} onChange={e => setIncidentForm({ ...incidentForm, description: e.target.value })} required />
           <div className="flex justify-end pt-4"><Button type="submit" variant="danger">Report</Button></div>
         </form>
       </Modal>
 
       <Modal isOpen={isAddExpenseOpen} onClose={() => setIsAddExpenseOpen(false)} title="Add Expense">
-        <form className="space-y-4 pt-4" onSubmit={e => { e.preventDefault(); toast("Success", { description: "Expense Added", type: "success" }); setIsAddExpenseOpen(false); }}>
-          <Select label="Category" options={[{label:"Toll", value:"Toll"}, {label:"Fine", value:"Fine"}, {label:"Other", value:"Other"}]} />
-          <Input label="Amount (₹)" type="number" required />
-          <Input label="Date" type="date" required />
+        <form className="space-y-4 pt-4" onSubmit={handleAddExpense}>
+          <Select label="Vehicle (optional)" value={expenseForm.vehicleId} onChange={e => setExpenseForm({ ...expenseForm, vehicleId: e.target.value })} options={[{ label: "School-wide (no vehicle)", value: "" }, ...vehicles.map(v => ({ label: v.vehicleNumber, value: v.id }))]} />
+          <Select label="Category" value={expenseForm.category} onChange={e => setExpenseForm({ ...expenseForm, category: e.target.value })} options={["Fuel", "Maintenance", "Toll", "Parking", "Fine", "Salary", "Insurance", "Taxes", "Other"].map(v => ({ label: v, value: v }))} />
+          <Select label="Payment Mode" value={expenseForm.paymentMode} onChange={e => setExpenseForm({ ...expenseForm, paymentMode: e.target.value })} options={[{ label: "Cash", value: "Cash" }, { label: "Card", value: "Card" }, { label: "UPI", value: "UPI" }, { label: "Bank Transfer", value: "Bank Transfer" }]} />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Amount (₹)" type="number" value={expenseForm.amount} onChange={e => setExpenseForm({ ...expenseForm, amount: e.target.value })} required />
+            <Input label="Date" type="date" value={expenseForm.date} onChange={e => setExpenseForm({ ...expenseForm, date: e.target.value })} required />
+          </div>
           <div className="flex justify-end pt-4"><Button type="submit" variant="primary">Submit</Button></div>
         </form>
       </Modal>
+
+      <Modal isOpen={isStartTripOpen} onClose={() => setIsStartTripOpen(false)} title="Start Trip">
+        <form className="space-y-4 pt-4" onSubmit={handleStartTrip}>
+          <Select
+            label="Route"
+            value={startTripForm.routeId}
+            onChange={e => setStartTripForm({ ...startTripForm, routeId: e.target.value })}
+            options={[{ label: "Select route", value: "" }, ...routes.filter(r => r.vehicleId).map(r => ({ label: `${r.routeName} (${r.vehicle?.vehicleNumber})`, value: r.id }))]}
+            required
+          />
+          <Select label="Trip Type" value={startTripForm.tripType} onChange={e => setStartTripForm({ ...startTripForm, tripType: e.target.value })} options={[{ label: "Morning", value: "Morning" }, { label: "Afternoon", value: "Afternoon" }, { label: "Special", value: "Special" }]} />
+          <Input label="Date" type="date" value={startTripForm.date} onChange={e => setStartTripForm({ ...startTripForm, date: e.target.value })} required />
+          <div className="flex justify-end pt-4"><Button type="submit" variant="primary">Start Trip</Button></div>
+        </form>
+      </Modal>
+
+      <EditVehicleModal isOpen={isEditVehicleOpen} onClose={() => setIsEditVehicleOpen(false)} vehicle={editingVehicle} apiUrl={API_URL} authHeaders={authHeaders} onSaved={fetchData} />
 
       <Modal isOpen={isAssignStudentOpen} onClose={() => setIsAssignStudentOpen(false)} title="Assign Student to Route Stop">
         <form className="space-y-4 pt-4" onSubmit={handleAssignStudent}>

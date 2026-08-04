@@ -6,10 +6,12 @@ import { Server, Activity, Clock, CheckCircle, XCircle, Loader2 } from "lucide-r
 import { useToast } from "@/components/ui/toast";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 export default function BackgroundJobsPage() {
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -24,6 +26,24 @@ export default function BackgroundJobsPage() {
       toast("Offline", { description: "Failed to connect to job queue API", type: "error" });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRetry = async (jobId: string) => {
+    setRetryingId(jobId);
+    try {
+      const res = await fetch(`${API_URL}/jobs/${jobId}/retry`, { method: "POST" });
+      if (res.ok) {
+        toast("Job requeued", { type: "success" });
+        fetchJobs();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast("Could not retry job", { description: err.message, type: "error" });
+      }
+    } catch {
+      toast("Action failed", { type: "error" });
+    } finally {
+      setRetryingId(null);
     }
   };
 
@@ -68,6 +88,7 @@ export default function BackgroundJobsPage() {
                   <TableHead>Task Name</TableHead>
                   <TableHead>Status / Progress</TableHead>
                   <TableHead>Queued At</TableHead>
+                  <TableHead>Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -76,11 +97,15 @@ export default function BackgroundJobsPage() {
                     <TableCell className="font-mono text-xs">{job.id}</TableCell>
                     <TableCell className="font-medium">{job.name}</TableCell>
                     <TableCell>
-                      {job.progress === 100 ? (
+                      {job.status === 'failed' ? (
+                        <div className="flex items-center gap-2 text-error" title={job.failedReason || undefined}>
+                          <XCircle className="h-4 w-4" /> <span className="text-xs font-semibold">Failed{job.failedReason ? `: ${job.failedReason}` : ""}</span>
+                        </div>
+                      ) : job.status === 'completed' || job.progress === 100 ? (
                         <div className="flex items-center gap-2 text-success">
                           <CheckCircle className="h-4 w-4" /> <span className="text-xs font-semibold">Completed</span>
                         </div>
-                      ) : typeof job.progress === 'number' && job.progress > 0 ? (
+                      ) : job.status === 'active' || (typeof job.progress === 'number' && job.progress > 0) ? (
                         <div className="space-y-1 w-full max-w-[200px]">
                           <div className="flex items-center justify-between text-xs text-primary font-semibold">
                             <span>Processing...</span>
@@ -99,6 +124,13 @@ export default function BackgroundJobsPage() {
                     <TableCell className="text-xs text-text-secondary">
                       <Clock className="h-3 w-3 inline mr-1" />
                       {new Date(job.timestamp).toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      {job.status === 'failed' && (
+                        <Button size="sm" variant="outline" disabled={retryingId === job.id} onClick={() => handleRetry(job.id)}>
+                          {retryingId === job.id ? "Retrying..." : "Retry"}
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

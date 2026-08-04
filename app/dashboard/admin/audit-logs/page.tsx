@@ -25,21 +25,38 @@ export default function AuditLogsPage() {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
   const [logs, setLogs] = useState<AuditLogDef[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
 
-  // Pagination states
+  // Filters — search covers user/module/action free-text; action and date range are explicit
+  const [searchQuery, setSearchQuery] = useState("");
+  const [actionFilter, setActionFilter] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+
+  // Server-driven pagination
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 15;
 
   const fetchLogs = async () => {
     try {
       setIsLoading(true);
-      const res = await fetch(`${API_URL}/audit-logs`);
+      const params = new URLSearchParams();
+      if (searchQuery) params.set("search", searchQuery);
+      if (actionFilter) params.set("action", actionFilter);
+      if (fromDate) params.set("from", fromDate);
+      if (toDate) params.set("to", toDate);
+      params.set("page", String(currentPage));
+      params.set("pageSize", String(pageSize));
+
+      const res = await fetch(`${API_URL}/audit-logs?${params.toString()}`);
       if (res.ok) {
         const json = await res.json();
-        setLogs(json.data || json || []);
+        setLogs(json.data || []);
+        setTotal(json.total || 0);
+        setTotalPages(json.totalPages || 1);
       }
     } catch {
       toast("Sync Offline", { description: "NestJS APIs offline.", type: "error" });
@@ -48,24 +65,19 @@ export default function AuditLogsPage() {
     }
   };
 
+  // Re-fetch whenever a filter or the page changes; debounce the free-text search
+  // so we don't fire a request per keystroke.
   useEffect(() => {
-    fetchLogs();
-  }, []);
-
-  const filteredLogs = logs.filter(
-    (log) =>
-      log.module.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (log.role && log.role.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
-
-  const totalPages = Math.ceil(filteredLogs.length / pageSize);
-  const startIndex = (currentPage - 1) * pageSize;
-  const paginatedLogs = filteredLogs.slice(startIndex, startIndex + pageSize);
+    const t = setTimeout(fetchLogs, searchQuery ? 350 : 0);
+    return () => clearTimeout(t);
+  }, [currentPage, searchQuery, actionFilter, fromDate, toDate]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery]);
+  }, [searchQuery, actionFilter, fromDate, toDate]);
+
+  const paginatedLogs = logs;
+  const startIndex = (currentPage - 1) * pageSize;
 
   return (
     <>
@@ -88,15 +100,42 @@ export default function AuditLogsPage() {
             <CardTitle>Database Audit Logs</CardTitle>
             <CardDescription>Security registry tracking write operations, users, and dual JSONB value diffs.</CardDescription>
           </div>
-          {/* Search bar */}
-          <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-text-secondary" />
+          {/* Filters: free-text (user/table), action type, date range */}
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-text-secondary" />
+              <input
+                type="text"
+                placeholder="Search table, user, action..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-card border border-border rounded-btn pl-9 pr-4 py-1.5 text-xs text-text-primary outline-none focus:border-primary transition-colors"
+              />
+            </div>
+            <select
+              value={actionFilter}
+              onChange={(e) => setActionFilter(e.target.value)}
+              className="bg-card border border-border rounded-btn px-2.5 py-1.5 text-xs text-text-primary outline-none focus:border-primary transition-colors"
+            >
+              <option value="">All actions</option>
+              <option value="CREATE">Create</option>
+              <option value="UPDATE">Update</option>
+              <option value="DELETE">Delete</option>
+              <option value="LOGIN">Login</option>
+            </select>
             <input
-              type="text"
-              placeholder="Search table, action, email..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-card border border-border rounded-btn pl-9 pr-4 py-1.5 text-xs text-text-primary outline-none focus:border-primary transition-colors"
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              title="From date"
+              className="bg-card border border-border rounded-btn px-2.5 py-1.5 text-xs text-text-primary outline-none focus:border-primary transition-colors"
+            />
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              title="To date"
+              className="bg-card border border-border rounded-btn px-2.5 py-1.5 text-xs text-text-primary outline-none focus:border-primary transition-colors"
             />
           </div>
         </CardHeader>
@@ -105,7 +144,7 @@ export default function AuditLogsPage() {
             <div className="py-12 text-center text-xs text-text-secondary italic">
               Loading security audit trail from PostgreSQL...
             </div>
-          ) : filteredLogs.length === 0 ? (
+          ) : total === 0 ? (
             <div className="py-12 text-center text-xs text-text-secondary italic">
               No audit logs recorded in system ledger.
             </div>
@@ -167,7 +206,7 @@ export default function AuditLogsPage() {
               {/* Pagination Controls */}
               <div className="flex items-center justify-between mt-4 pt-4 border-t">
                 <p className="text-xs text-text-secondary">
-                  Showing {startIndex + 1} to {Math.min(startIndex + pageSize, filteredLogs.length)} of {filteredLogs.length} audit entries
+                  Showing {startIndex + 1} to {Math.min(startIndex + pageSize, total)} of {total} audit entries
                 </p>
                 <div className="flex gap-2">
                   <button

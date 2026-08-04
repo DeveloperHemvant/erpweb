@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Upload, FileText, CheckCircle, AlertCircle, Download } from "lucide-react";
@@ -8,12 +8,41 @@ import { useToast } from "@/components/ui/toast";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+interface SessionDef {
+  id: string;
+  name: string;
+}
+
 export default function BulkImportPage() {
   const [file, setFile] = useState<File | null>(null);
   const [type, setType] = useState<string>("students");
   const [isUploading, setIsUploading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const { toast } = useToast();
+
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const authHeaders: HeadersInit | undefined = token ? { Authorization: `Bearer ${token}` } : undefined;
+
+  // Imports target the school's active campus and a chosen academic session — both
+  // are real, selected context, not placeholder data (previously hardcoded UUIDs here).
+  const [campusId, setCampusId] = useState<string>("");
+  const [sessions, setSessions] = useState<SessionDef[]>([]);
+  const [sessionId, setSessionId] = useState<string>("");
+
+  useEffect(() => {
+    const storedCampusId = typeof window !== "undefined" ? localStorage.getItem("activeCampusId") : null;
+    setCampusId(storedCampusId || "");
+
+    fetch(`${API_URL}/master-data/sessions`, { headers: authHeaders })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        setSessions(list);
+        if (list.length > 0) setSessionId(list[0].id);
+      })
+      .catch(() => toast("Failed to load academic sessions", { type: "error" }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -44,6 +73,14 @@ export default function BulkImportPage() {
       toast("Error", { description: "Please select a file first", type: "error" });
       return;
     }
+    if (!campusId) {
+      toast("No campus selected", { description: "Select a campus from the top bar before importing.", type: "error" });
+      return;
+    }
+    if (!sessionId) {
+      toast("No academic session selected", { description: "Choose which session these records belong to.", type: "error" });
+      return;
+    }
 
     setIsUploading(true);
     setResult(null);
@@ -51,13 +88,13 @@ export default function BulkImportPage() {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("type", type);
-    // Hardcoded for dev, normally from context
-    formData.append("campusId", "11111111-1111-1111-1111-111111111111"); 
-    formData.append("sessionId", "22222222-2222-2222-2222-222222222222");
+    formData.append("campusId", campusId);
+    formData.append("sessionId", sessionId);
 
     try {
       const response = await fetch(`${API_URL}/import/csv`, {
         method: "POST",
+        headers: authHeaders,
         body: formData,
       });
 
@@ -85,8 +122,8 @@ export default function BulkImportPage() {
             <CardTitle>Select Import Type</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <select 
-              value={type} 
+            <select
+              value={type}
               onChange={(e) => setType(e.target.value)}
               className="w-full p-2 rounded-md border border-border bg-background"
             >
@@ -94,6 +131,28 @@ export default function BulkImportPage() {
               <option value="staff">Staff & Teachers</option>
               <option value="students">Students & Parents</option>
             </select>
+
+            {type !== "staff" && (
+              <div>
+                <label className="text-xs font-medium text-text-secondary mb-1 block">Academic Session</label>
+                <select
+                  value={sessionId}
+                  onChange={(e) => setSessionId(e.target.value)}
+                  className="w-full p-2 rounded-md border border-border bg-background"
+                >
+                  {sessions.length === 0 && <option value="">No sessions found</option>}
+                  {sessions.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {!campusId && (
+              <div className="flex items-center gap-2 text-xs text-error bg-error/10 border border-error/20 rounded-md p-2">
+                <AlertCircle className="w-4 h-4 shrink-0" /> No campus selected — pick one from the top bar before importing.
+              </div>
+            )}
 
             <div className="text-sm text-text-secondary">
               <p>Required CSV Columns:</p>

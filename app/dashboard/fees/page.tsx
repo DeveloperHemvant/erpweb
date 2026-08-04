@@ -10,7 +10,7 @@ import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { Tabs } from "@/components/ui/tabs";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { Search, Plus, Trash2, Wallet, Calculator, Printer, CheckCircle, FileText, Settings } from "lucide-react";
+import { Search, Plus, Trash2, Wallet, Calculator, Printer, CheckCircle, FileText, Settings, RotateCcw, XCircle } from "lucide-react";
 
 interface SiblingDetails {
   name: string;
@@ -34,6 +34,25 @@ interface PaymentDef {
   paymentMode: string;
   referenceNo?: string;
   paymentDate: string;
+}
+
+interface RefundDef {
+  id: string;
+  paymentId: string;
+  amount: string;
+  reason: string;
+  status: string;
+  refundMode?: string;
+  referenceNo?: string;
+  requestedAt: string;
+  payment?: {
+    amountPaid: string;
+    invoice?: {
+      enrollment?: {
+        student?: { fullName: string; admissionNumber: string };
+      };
+    };
+  };
 }
 
 interface FeeInvoiceDef {
@@ -151,6 +170,15 @@ export default function FeesPage() {
   // Invoice Receipt Preview Modal
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [receiptInvoice, setReceiptInvoice] = useState<FeeInvoiceDef | null>(null);
+
+  // Refunds
+  const [refundsList, setRefundsList] = useState<RefundDef[]>([]);
+  const [paymentRefunds, setPaymentRefunds] = useState<Record<string, RefundDef[]>>({});
+  const [isRefundRequestOpen, setIsRefundRequestOpen] = useState(false);
+  const [refundTargetPayment, setRefundTargetPayment] = useState<PaymentDef | null>(null);
+  const [refundAmount, setRefundAmount] = useState("");
+  const [refundReason, setRefundReason] = useState("");
+  const [refundMode, setRefundMode] = useState("UPI");
 
   const fetchData = async () => {
     try {
@@ -461,6 +489,82 @@ export default function FeesPage() {
     }
   }, [activeTab, invoiceSessionId]);
 
+  const fetchRefunds = async () => {
+    try {
+      const res = await fetch(`${ERP_API_URL}/fees/refunds`, { headers: authHeaders });
+      if (res.ok) setRefundsList(await res.json());
+    } catch {
+      toast("Failed to load refunds", { type: "error" });
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "refunds") fetchRefunds();
+  }, [activeTab]);
+
+  // Lazy-load refund history per payment when the invoice slip is opened
+  useEffect(() => {
+    if (!isReceiptOpen || !receiptInvoice) return;
+    receiptInvoice.payments.forEach((p) => {
+      fetch(`${ERP_API_URL}/fees/payments/${p.id}/refunds`, { headers: authHeaders })
+        .then((res) => (res.ok ? res.json() : []))
+        .then((data) => setPaymentRefunds((prev) => ({ ...prev, [p.id]: data })))
+        .catch(() => {});
+    });
+  }, [isReceiptOpen, receiptInvoice]);
+
+  const handleOpenRefundRequest = (payment: PaymentDef) => {
+    setRefundTargetPayment(payment);
+    setRefundAmount(payment.amountPaid);
+    setRefundReason("");
+    setRefundMode(payment.paymentMode);
+    setIsRefundRequestOpen(true);
+  };
+
+  const handleSubmitRefundRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!refundTargetPayment || !refundAmount || !refundReason.trim()) {
+      toast("Validation Error", { description: "Amount and reason are required.", type: "error" });
+      return;
+    }
+    try {
+      const res = await fetch(`${ERP_API_URL}/fees/payments/${refundTargetPayment.id}/refunds`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify({ amount: refundAmount, reason: refundReason, refundMode }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Failed to request refund");
+      }
+      toast("Refund requested — pending approval", { type: "success" });
+      setIsRefundRequestOpen(false);
+      const refreshed = await fetch(`${ERP_API_URL}/fees/payments/${refundTargetPayment.id}/refunds`, { headers: authHeaders });
+      if (refreshed.ok) {
+        const refreshedData = await refreshed.json();
+        setPaymentRefunds((prev) => ({ ...prev, [refundTargetPayment.id]: refreshedData }));
+      }
+    } catch (error: any) {
+      toast("Refund Request Failed", { description: error.message, type: "error" });
+    }
+  };
+
+  const handleResolveRefund = async (id: string, status: "Approved" | "Rejected") => {
+    try {
+      const res = await fetch(`${ERP_API_URL}/fees/refunds/${id}/resolve`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) throw new Error();
+      toast(status === "Approved" ? "Refund approved" : "Refund rejected", { type: status === "Approved" ? "success" : "warning" });
+      fetchRefunds();
+      fetchData();
+    } catch {
+      toast("Action Failed", { type: "error" });
+    }
+  };
+
   const filteredInvoices = invoices.filter(
     (inv) =>
       inv.student?.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -503,6 +607,7 @@ export default function FeesPage() {
           { id: "structures", label: "Class Fee Structures", icon: <Settings className="h-4 w-4" /> },
           { id: "calculator", label: "Concessions Calculator", icon: <Calculator className="h-4 w-4" /> },
           { id: "reports", label: "Financial Reports", icon: <FileText className="h-4 w-4" /> },
+          { id: "refunds", label: "Refunds", icon: <RotateCcw className="h-4 w-4" /> },
         ]}
       />
 
@@ -823,6 +928,65 @@ export default function FeesPage() {
         </Card>
       )}
 
+      {/* Refunds Tab */}
+      {activeTab === "refunds" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Refund Requests</CardTitle>
+            <CardDescription>Review and resolve refund requests raised against recorded payments.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {refundsList.length === 0 ? (
+              <div className="py-12 text-center text-xs text-text-secondary italic">No refund requests yet.</div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Student</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Reason</TableHead>
+                    <TableHead>Mode</TableHead>
+                    <TableHead>Requested</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {refundsList.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell className="font-medium text-text-primary">
+                        {r.payment?.invoice?.enrollment?.student?.fullName || "—"}
+                      </TableCell>
+                      <TableCell className="font-bold text-text-primary">₹{r.amount}</TableCell>
+                      <TableCell className="text-xs text-text-secondary max-w-[220px] truncate" title={r.reason}>{r.reason}</TableCell>
+                      <TableCell className="text-xs">{r.refundMode || "—"}</TableCell>
+                      <TableCell className="text-xs text-text-secondary">{new Date(r.requestedAt).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <Badge variant={r.status === "Approved" ? "success" : r.status === "Rejected" ? "danger" : "warning"}>
+                          {r.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {r.status === "Requested" && (
+                          <div className="flex justify-end gap-1.5">
+                            <Button size="sm" variant="outline" className="h-8 text-xs text-success" leftIcon={<CheckCircle className="h-3.5 w-3.5" />} onClick={() => handleResolveRefund(r.id, "Approved")}>
+                              Approve
+                            </Button>
+                            <Button size="sm" variant="outline" className="h-8 text-xs text-danger" leftIcon={<XCircle className="h-3.5 w-3.5" />} onClick={() => handleResolveRefund(r.id, "Rejected")}>
+                              Reject
+                            </Button>
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* GENERATE INVOICE MODAL (CASCADED SELECTOR) */}
       <Modal isOpen={isInvoiceOpen} onClose={() => setIsInvoiceOpen(false)} title="Generate Class Invoice" size="md">
         <form onSubmit={handleCreateInvoice} className="space-y-4">
@@ -1033,23 +1197,46 @@ export default function FeesPage() {
                           <TableHead>Mode</TableHead>
                           <TableHead>Reference No</TableHead>
                           <TableHead className="text-right">Amount Paid</TableHead>
+                          <TableHead>Refund Status</TableHead>
+                          <TableHead className="text-right">Action</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {receiptInvoice.payments.map((p) => (
-                          <TableRow key={p.id}>
-                            <TableCell>{p.paymentDate}</TableCell>
-                            <TableCell>{p.paymentMode}</TableCell>
-                            <TableCell className="font-mono text-[10px]">{p.referenceNo || "N/A"}</TableCell>
-                            <TableCell className="text-right text-success font-semibold">₹{p.amountPaid}</TableCell>
-                          </TableRow>
-                        ))}
+                        {receiptInvoice.payments.map((p) => {
+                          const refunds = paymentRefunds[p.id] || [];
+                          return (
+                            <TableRow key={p.id}>
+                              <TableCell>{p.paymentDate}</TableCell>
+                              <TableCell>{p.paymentMode}</TableCell>
+                              <TableCell className="font-mono text-[10px]">{p.referenceNo || "N/A"}</TableCell>
+                              <TableCell className="text-right text-success font-semibold">₹{p.amountPaid}</TableCell>
+                              <TableCell>
+                                {refunds.length === 0 ? (
+                                  <span className="text-[10px] text-text-secondary">—</span>
+                                ) : (
+                                  <div className="flex flex-col gap-1">
+                                    {refunds.map((r) => (
+                                      <Badge key={r.id} variant={r.status === "Approved" ? "success" : r.status === "Rejected" ? "danger" : "warning"} className="w-fit text-[10px]">
+                                        ₹{r.amount} {r.status}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button size="sm" variant="ghost" className="h-7 text-[11px]" leftIcon={<RotateCcw className="h-3 w-3" />} onClick={() => handleOpenRefundRequest(p)}>
+                                  Refund
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                         <TableRow className="font-bold text-text-primary border-t bg-slate-50 dark:bg-slate-800/10">
-                          <TableCell colSpan={3}>Total Paid Balance</TableCell>
+                          <TableCell colSpan={5}>Total Paid Balance</TableCell>
                           <TableCell className="text-right text-success">₹{totalPaid.toFixed(2)}</TableCell>
                         </TableRow>
                         <TableRow className="font-bold text-text-primary bg-slate-50 dark:bg-slate-800/20">
-                          <TableCell colSpan={3}>Remaining Balance Due</TableCell>
+                          <TableCell colSpan={5}>Remaining Balance Due</TableCell>
                           <TableCell className="text-right text-danger">₹{balance.toFixed(2)}</TableCell>
                         </TableRow>
                       </TableBody>
@@ -1069,6 +1256,53 @@ export default function FeesPage() {
           );
         })()}
       </Modal>
+      {/* REQUEST REFUND MODAL */}
+      <Modal isOpen={isRefundRequestOpen} onClose={() => setIsRefundRequestOpen(false)} title="Request Refund" size="md">
+        {refundTargetPayment && (
+          <form onSubmit={handleSubmitRefundRequest} className="space-y-4">
+            <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-btn text-xs border space-y-1">
+              <p><b>Original Payment:</b> ₹{refundTargetPayment.amountPaid} via {refundTargetPayment.paymentMode}</p>
+              <p><b>Reference:</b> {refundTargetPayment.referenceNo || "N/A"}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="Refund Amount (INR) *"
+                type="number"
+                required
+                value={refundAmount}
+                onChange={(e) => setRefundAmount(e.target.value)}
+              />
+              <Select
+                label="Refund Mode"
+                value={refundMode}
+                onChange={(e) => setRefundMode(e.target.value)}
+                options={[
+                  { label: "Cash", value: "Cash" },
+                  { label: "UPI", value: "UPI" },
+                  { label: "NetBanking", value: "NetBanking" },
+                  { label: "Cheque", value: "Cheque" },
+                  { label: "Original Payment Method", value: "Original" },
+                ]}
+              />
+            </div>
+
+            <Input
+              label="Reason *"
+              placeholder="e.g. Duplicate payment, overpayment, admission withdrawn"
+              required
+              value={refundReason}
+              onChange={(e) => setRefundReason(e.target.value)}
+            />
+
+            <div className="flex justify-end gap-2 pt-4 border-t mt-4">
+              <Button type="button" variant="outline" onClick={() => setIsRefundRequestOpen(false)}>Cancel</Button>
+              <Button type="submit" variant="primary">Submit Request</Button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
       {/* Bulk Generate Modal */}
       <Modal isOpen={isBulkInvoiceOpen} onClose={() => setIsBulkInvoiceOpen(false)} title="Queue Bulk Fee Generation">
         <form onSubmit={handleGenerateAllInvoices} className="space-y-4 pt-4">

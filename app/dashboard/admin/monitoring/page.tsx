@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
-import { Server, Cpu, Database, Activity, MemoryStick, Clock } from "lucide-react";
+import { Server, Cpu, Database, Activity, MemoryStick, Clock, ListChecks } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 
 export default function SystemMonitoringPage() {
   const [metrics, setMetrics] = useState<any>(null);
+  const [queueStatus, setQueueStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -14,10 +15,12 @@ export default function SystemMonitoringPage() {
 
   const fetchMetrics = async () => {
     try {
-      const res = await fetch(`${API_URL}/monitoring/system-metrics`);
-      if (res.ok) {
-        setMetrics(await res.json());
-      }
+      const [metricsRes, queueRes] = await Promise.all([
+        fetch(`${API_URL}/monitoring/system-metrics`),
+        fetch(`${API_URL}/monitoring/queue-status`),
+      ]);
+      if (metricsRes.ok) setMetrics(await metricsRes.json());
+      if (queueRes.ok) setQueueStatus(await queueRes.json());
     } catch {
       toast("Offline", { description: "Failed to connect to monitoring API", type: "error" });
     } finally {
@@ -116,6 +119,33 @@ export default function SystemMonitoringPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="mt-6">
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <div>
+            <CardTitle>Job Queue Status</CardTitle>
+            <CardDescription>Background fee-generation queue (BullMQ) — see Background Tasks for job-level retry.</CardDescription>
+          </div>
+          <ListChecks className="h-4 w-4 text-text-secondary" />
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            {[
+              { label: "Waiting", value: queueStatus?.counts?.waiting, color: "text-warning" },
+              { label: "Active", value: queueStatus?.counts?.active, color: "text-primary" },
+              { label: "Completed", value: queueStatus?.counts?.completed, color: "text-success" },
+              { label: "Failed", value: queueStatus?.counts?.failed, color: "text-error" },
+              { label: "Delayed", value: queueStatus?.counts?.delayed, color: "text-text-secondary" },
+              { label: "Error Rate", value: queueStatus ? `${queueStatus.errorRatePercent}%` : undefined, color: queueStatus?.errorRatePercent > 10 ? "text-error" : "text-text-primary" },
+            ].map((s) => (
+              <div key={s.label} className="p-3 rounded-lg border bg-background/50 text-center">
+                <div className={`text-xl font-bold ${s.color}`}>{s.value ?? "—"}</div>
+                <div className="text-[11px] text-text-secondary mt-1">{s.label}</div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
         <Card>

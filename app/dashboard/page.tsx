@@ -1,10 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { MetricCard } from "@/components/ui/metric-card";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import {
   Users,
   GraduationCap,
@@ -12,9 +13,9 @@ import {
   Wallet,
   Clock,
   ArrowRight,
-  TrendingUp,
   FileCheck2,
-  AlertCircle
+  AlertCircle,
+  ShieldAlert,
 } from "lucide-react";
 import {
   AreaChart,
@@ -26,30 +27,99 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
-  Legend
+  Legend,
 } from "recharts";
+import { useToast } from "@/components/ui/toast";
 
-// Mock Data
-const attendanceData = [
-  { name: "Grade 6", present: 94, absent: 6 },
-  { name: "Grade 7", present: 92, absent: 8 },
-  { name: "Grade 8", present: 96, absent: 4 },
-  { name: "Grade 9", present: 88, absent: 12 },
-  { name: "Grade 10", present: 95, absent: 5 },
-  { name: "Grade 11", present: 91, absent: 9 },
-  { name: "Grade 12", present: 97, absent: 3 },
-];
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-const feeCollectionData = [
-  { month: "Jan", target: 45000, collected: 42000 },
-  { month: "Feb", target: 45000, collected: 43500 },
-  { month: "Mar", target: 50000, collected: 49000 },
-  { month: "Apr", target: 50000, collected: 48000 },
-  { month: "May", target: 55000, collected: 54000 },
-  { month: "Jun", target: 55000, collected: 53000 },
-];
+interface DashboardSummary {
+  attendanceRate: number;
+  totalRevenue: number;
+  totalOutstanding: number;
+  staffCount: number;
+  studentCount: number;
+}
+
+interface DashboardTrends {
+  revenueByClass: { name: string; collected: number; outstanding: number }[];
+  attendanceTrend: { date: string; rate: number }[];
+}
+
+interface AuditLogRow {
+  id: string;
+  action: string;
+  module: string;
+  entityType: string | null;
+  performedBy: string;
+  timestamp: string;
+}
+
+interface AnnouncementRow {
+  id: string;
+  title: string;
+  body: string;
+  targetAudience: string;
+}
 
 export default function DashboardHome() {
+  const { toast } = useToast();
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const authHeaders: HeadersInit | undefined = token ? { Authorization: `Bearer ${token}` } : undefined;
+
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [trends, setTrends] = useState<DashboardTrends | null>(null);
+  const [classCount, setClassCount] = useState<number | null>(null);
+  const [recentLogs, setRecentLogs] = useState<AuditLogRow[]>([]);
+  const [announcements, setAnnouncements] = useState<AnnouncementRow[]>([]);
+
+  useEffect(() => {
+    fetch(`${API_URL}/analytics/dashboard/summary`, { headers: authHeaders })
+      .then((res) => (res.ok ? res.json() : null))
+      .then(setSummary)
+      .catch(() => toast("Failed to load dashboard summary", { type: "error" }));
+
+    fetch(`${API_URL}/analytics/dashboard/trends`, { headers: authHeaders })
+      .then((res) => (res.ok ? res.json() : null))
+      .then(setTrends)
+      .catch(() => toast("Failed to load dashboard trends", { type: "error" }));
+
+    fetch(`${API_URL}/master-data/classes`, { headers: authHeaders })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => setClassCount(Array.isArray(data) ? data.length : null))
+      .catch(() => {});
+
+    fetch(`${API_URL}/audit-logs?pageSize=3`, { headers: authHeaders })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => setRecentLogs(json?.data || []))
+      .catch(() => {});
+
+    fetch(`${API_URL}/communication/announcements`, { headers: authHeaders })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => setAnnouncements(Array.isArray(data) ? data.slice(0, 2) : []))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const formatCurrency = (n: number) =>
+    `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+
+  const activityIcon = (action: string) => {
+    if (action?.includes("DELETE")) return <AlertCircle className="h-4 w-4 text-error" />;
+    if (action?.includes("CREATE")) return <FileCheck2 className="h-4 w-4 text-success" />;
+    return <ShieldAlert className="h-4 w-4 text-primary" />;
+  };
+
+  const timeAgo = (iso: string) => {
+    const diffMs = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return "Just now";
+    if (mins < 60) return `${mins} mins ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs} hours ago`;
+    return `${Math.floor(hrs / 24)} days ago`;
+  };
+
   return (
     <>
       {/* Title Header */}
@@ -66,9 +136,6 @@ export default function DashboardHome() {
           <Badge variant="success" className="h-6">
             System Live
           </Badge>
-          <Badge variant="primary" className="h-6">
-            AY 2026-27
-          </Badge>
         </div>
       </div>
 
@@ -76,47 +143,68 @@ export default function DashboardHome() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           title="Total Enrollment"
-          value="1,482"
-          description="Active students registered"
-          trend={{ value: "+4.2%", type: "up" }}
+          value={summary ? summary.studentCount.toLocaleString() : "—"}
+          description="Active students enrolled"
           icon={<GraduationCap className="h-5 w-5 text-primary" />}
         />
         <MetricCard
-          title="Daily Attendance"
-          value="93.4%"
-          description="Average present today"
-          trend={{ value: "+0.8%", type: "up" }}
+          title="Today's Attendance"
+          value={summary ? `${summary.attendanceRate}%` : "—"}
+          description="Present today, of records marked"
           icon={<Users className="h-5 w-5 text-success" />}
         />
         <MetricCard
           title="Outstanding Fees"
-          value="$12,450"
-          description="Term dues pending"
-          trend={{ value: "-8.5%", type: "down" }}
+          value={summary ? formatCurrency(summary.totalOutstanding) : "—"}
+          description="Unpaid across all invoices"
           icon={<Wallet className="h-5 w-5 text-danger" />}
         />
         <MetricCard
-          title="Active Classes"
-          value="54"
-          description="Sections running online/hybrid"
-          trend={{ value: "Stable", type: "neutral" }}
+          title="Active Staff"
+          value={summary ? summary.staffCount.toLocaleString() : "—"}
+          description={classCount != null ? `${classCount} classes on record` : "Active staff on record"}
           icon={<Calendar className="h-5 w-5 text-info" />}
         />
       </div>
 
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Attendance Bar Chart */}
+        {/* Attendance Trend */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Attendance Distribution</CardTitle>
+            <CardTitle>Attendance Trend</CardTitle>
             <CardDescription>
-              Average percentage distribution of present/absent students by grade level.
+              Daily present rate across the last 7 days, all campuses.
             </CardDescription>
           </CardHeader>
           <CardContent className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={attendanceData}>
+              <BarChart data={trends?.attendanceTrend || []}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                <XAxis dataKey="date" stroke="var(--text-secondary)" fontSize={11} />
+                <YAxis stroke="var(--text-secondary)" fontSize={11} unit="%" />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "var(--card)",
+                    borderColor: "var(--border)",
+                    color: "var(--text-primary)",
+                  }}
+                />
+                <Bar dataKey="rate" name="Present %" fill="#C99A3E" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Fee Collection by Class */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Fee Collection by Class</CardTitle>
+            <CardDescription>Collected vs. outstanding, current invoices.</CardDescription>
+          </CardHeader>
+          <CardContent className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={trends?.revenueByClass || []}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                 <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={11} />
                 <YAxis stroke="var(--text-secondary)" fontSize={11} />
@@ -128,34 +216,8 @@ export default function DashboardHome() {
                   }}
                 />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="present" name="Present %" fill="#C99A3E" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="absent" name="Absent %" fill="#C1502E" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Fee Collection Area Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Fee Collection Goals</CardTitle>
-            <CardDescription>Target vs actual fee collection. </CardDescription>
-          </CardHeader>
-          <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={feeCollectionData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                <XAxis dataKey="month" stroke="var(--text-secondary)" fontSize={11} />
-                <YAxis stroke="var(--text-secondary)" fontSize={11} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "var(--card)",
-                    borderColor: "var(--border)",
-                    color: "var(--text-primary)",
-                  }}
-                />
                 <Area type="monotone" dataKey="collected" name="Collected" stroke="#4C7A6B" fill="rgba(76,122,107,0.15)" strokeWidth={2} />
-                <Area type="monotone" dataKey="target" name="Target" stroke="#6B6B63" fill="rgba(107,107,99,0.05)" strokeWidth={1.5} strokeDasharray="5 5" />
+                <Area type="monotone" dataKey="outstanding" name="Outstanding" stroke="#C1502E" fill="rgba(193,80,46,0.08)" strokeWidth={1.5} strokeDasharray="5 5" />
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>
@@ -168,47 +230,29 @@ export default function DashboardHome() {
         <Card>
           <CardHeader>
             <CardTitle>Recent Activity Log</CardTitle>
-            <CardDescription>Academic status updates from faculty portal.</CardDescription>
+            <CardDescription>Latest entries from the system audit trail.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {[
-                {
-                  id: "1",
-                  title: "Gradebook Closed for Semester 1",
-                  desc: "Gradebook registers finalized by Director.",
-                  time: "10 mins ago",
-                  icon: <FileCheck2 className="h-4 w-4 text-success" />,
-                },
-                {
-                  id: "2",
-                  title: "Alert: Low Attendance Notice Dispatched",
-                  desc: "Automated emails sent to 12 guardians.",
-                  time: "2 hours ago",
-                  icon: <AlertCircle className="h-4 w-4 text-warning" />,
-                },
-                {
-                  id: "3",
-                  title: "Quarterly Fee Statement Dispatched",
-                  desc: "Invoicing processed for North campus division.",
-                  time: "5 hours ago",
-                  icon: <Wallet className="h-4 w-4 text-primary" />,
-                },
-              ].map((activity) => (
-                <div key={activity.id} className="flex gap-3 items-start p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-[10px] transition-colors">
-                  <div className="p-2 bg-slate-100 dark:bg-slate-700/60 rounded-btn">
-                    {activity.icon}
+            {recentLogs.length === 0 ? (
+              <p className="text-sm text-text-secondary py-6 text-center">No recent activity recorded.</p>
+            ) : (
+              <div className="space-y-4">
+                {recentLogs.map((log) => (
+                  <div key={log.id} className="flex gap-3 items-start p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-[10px] transition-colors">
+                    <div className="p-2 bg-slate-100 dark:bg-slate-700/60 rounded-btn">
+                      {activityIcon(log.action)}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-text-primary">{log.action} · {log.module}</p>
+                      <p className="text-xs text-text-secondary mt-0.5">by {log.performedBy}</p>
+                    </div>
+                    <span className="text-[10px] text-text-secondary whitespace-nowrap pt-1">
+                      {timeAgo(log.timestamp)}
+                    </span>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-text-primary">{activity.title}</p>
-                    <p className="text-xs text-text-secondary mt-0.5">{activity.desc}</p>
-                  </div>
-                  <span className="text-[10px] text-text-secondary whitespace-nowrap pt-1">
-                    {activity.time}
-                  </span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -219,33 +263,28 @@ export default function DashboardHome() {
               <CardTitle>Campus Announcements</CardTitle>
               <CardDescription>Institutional news from administration offices.</CardDescription>
             </div>
-            <Button variant="ghost" size="sm" className="h-8 cursor-pointer">
-              View All <ArrowRight className="ml-1 h-3.5 w-3.5" />
-            </Button>
+            <Link href="/dashboard/admin/announcements">
+              <Button variant="ghost" size="sm" className="h-8 cursor-pointer">
+                View All <ArrowRight className="ml-1 h-3.5 w-3.5" />
+              </Button>
+            </Link>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4.5">
-              {[
-                {
-                  tag: "Academic",
-                  title: "Term 3 Examination Schedules Released",
-                  desc: "All physical campus divisions will hold final tests starting from August 10th. Make sure all gradebook logs are updated.",
-                },
-                {
-                  tag: "Finance",
-                  title: "Academic Fee Instalment 2 Deadline Alert",
-                  desc: "Guardians are advised that fee portals will close collections on August 1st. Standard late charges will be active thereafter.",
-                },
-              ].map((anc, idx) => (
-                <div key={idx} className="border-l-4 border-primary pl-3 space-y-1">
-                  <Badge variant="primary" className="text-[9px] uppercase tracking-wider py-0 px-2">
-                    {anc.tag}
-                  </Badge>
-                  <h4 className="text-sm font-bold text-text-primary">{anc.title}</h4>
-                  <p className="text-xs text-text-secondary leading-relaxed">{anc.desc}</p>
-                </div>
-              ))}
-            </div>
+            {announcements.length === 0 ? (
+              <p className="text-sm text-text-secondary py-6 text-center">No announcements yet.</p>
+            ) : (
+              <div className="space-y-4.5">
+                {announcements.map((anc) => (
+                  <div key={anc.id} className="border-l-4 border-primary pl-3 space-y-1">
+                    <Badge variant="primary" className="text-[9px] uppercase tracking-wider py-0 px-2">
+                      {anc.targetAudience}
+                    </Badge>
+                    <h4 className="text-sm font-bold text-text-primary">{anc.title}</h4>
+                    <p className="text-xs text-text-secondary leading-relaxed">{anc.body}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

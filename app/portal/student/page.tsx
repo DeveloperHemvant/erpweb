@@ -6,6 +6,8 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
+import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { Clock, Calendar, CheckCircle2, AlertCircle, FileText, BookOpen, ClipboardList } from "lucide-react";
 
@@ -28,6 +30,10 @@ function StudentDashboardContent() {
   const [content, setContent] = useState<any[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
 
+  const [activeAssignment, setActiveAssignment] = useState<any>(null);
+  const [submissionText, setSubmissionText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
   useEffect(() => {
     if (id) {
       fetch(`${API_URL}/portal/student/${id}/dashboard`)
@@ -39,17 +45,57 @@ function StudentDashboardContent() {
         .then(res => res.json())
         .then(data => setAnnouncements(data.filter((a: any) => ["ALL", "STUDENTS"].includes(a.targetAudience))));
 
-      // Assuming enrollmentId can be fetched from the dashboard data, but for now we fetch all
-      fetch(`${API_URL}/lms/resources`)
-        .then(res => res.json())
-        .then(setContent);
-
-      // Will need enrollmentId for specific assignments, just fetching all for MVP
-      fetch(`${API_URL}/lms/assignments`)
-        .then(res => res.json())
-        .then(setAssignments);
     }
   }, [id]);
+
+  // Scope LMS content/assignments to the student's own class once the dashboard has loaded
+  useEffect(() => {
+    const classId = data?.enrollment?.section?.classId;
+    if (!classId) return;
+
+    fetch(`${API_URL}/lms/resources?classId=${classId}`)
+      .then(res => res.json())
+      .then(setContent);
+
+    fetch(`${API_URL}/lms/assignments?classId=${classId}`)
+      .then(res => res.json())
+      .then(setAssignments);
+  }, [data]);
+
+  const handleSubmitAssignment = async () => {
+    if (!activeAssignment || !data?.student?.id) return;
+    if (!submissionText.trim()) {
+      toast("Write something (or paste a link) before submitting", { type: "error" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${API_URL}/lms/assignments/${activeAssignment.id}/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId: data.student.id, content: submissionText }),
+      });
+      if (res.ok) {
+        const submission = await res.json();
+        setAssignments((prev) =>
+          prev.map((a) =>
+            a.id === activeAssignment.id
+              ? { ...a, submissions: [...(a.submissions || []), submission] }
+              : a
+          )
+        );
+        toast("Homework submitted", { type: "success" });
+        setActiveAssignment(null);
+        setSubmissionText("");
+      } else {
+        toast("Could not submit homework", { type: "error" });
+      }
+    } catch {
+      toast("Action failed", { type: "error" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (!data) return <div className="p-8 text-center">Loading...</div>;
 
@@ -166,18 +212,32 @@ function StudentDashboardContent() {
           <CardContent>
             {assignments.length > 0 ? (
               <div className="space-y-3">
-                {assignments.map((a, i) => (
-                  <div key={i} className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border">
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="font-semibold">{a.title}</div>
-                      <div className="text-xs font-bold text-error">Due: {a.dueDate}</div>
+                {assignments.map((a, i) => {
+                  const mySubmission = a.submissions?.find((s: any) => s.studentId === student.id);
+                  return (
+                    <div key={i} className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="font-semibold">{a.title}</div>
+                        <div className="text-xs font-bold text-error">Due: {a.dueDate}</div>
+                      </div>
+                      <div className="text-text-secondary text-sm mb-3">{a.subject?.name}</div>
+                      {mySubmission ? (
+                        <Badge variant="success" className="w-full justify-center py-1.5">
+                          <CheckCircle2 className="w-3 h-3 mr-1" /> Submitted
+                        </Badge>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full text-xs"
+                          onClick={() => { setActiveAssignment(a); setSubmissionText(""); }}
+                        >
+                          Submit Homework
+                        </Button>
+                      )}
                     </div>
-                    <div className="text-text-secondary text-sm mb-3">{a.subject?.name}</div>
-                    <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => toast("Assignment Submission logic would open here", { type: "info" })}>
-                      Submit Homework
-                    </Button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="text-text-secondary">No pending assignments.</p>
@@ -245,6 +305,21 @@ function StudentDashboardContent() {
           </CardContent>
         </Card>
       </div>
+
+      <Modal isOpen={!!activeAssignment} onClose={() => setActiveAssignment(null)} title={activeAssignment?.title || "Submit Homework"} size="md">
+        <div className="space-y-4">
+          <p className="text-sm text-text-secondary">{activeAssignment?.subject?.name} · Due {activeAssignment?.dueDate}</p>
+          <Textarea
+            label="Your answer"
+            placeholder="Type your answer, or paste a link to your work"
+            value={submissionText}
+            onChange={(e) => setSubmissionText(e.target.value)}
+          />
+          <Button variant="primary" className="w-full" onClick={handleSubmitAssignment} disabled={submitting}>
+            {submitting ? "Submitting..." : "Submit"}
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

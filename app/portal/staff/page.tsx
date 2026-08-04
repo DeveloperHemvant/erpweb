@@ -24,6 +24,7 @@ function StaffDashboardContent() {
 
   const [workload, setWorkload] = useState<any[]>([]);
   const [leaveBalances, setLeaveBalances] = useState<any[]>([]);
+  const [payslips, setPayslips] = useState<any[]>([]);
 
   useEffect(() => {
     if (staffId) {
@@ -39,8 +40,17 @@ function StaffDashboardContent() {
         .then(res => res.json())
         .then(setLeaveBalances)
         .catch(() => toast("Failed to load leave balances", { type: "error" }));
+
+      // Payslips (own — self-access, most recent first)
+      fetch(`${API_URL}/hr/payslips/${staffId}`)
+        .then(res => res.json())
+        .then(setPayslips)
+        .catch(() => toast("Failed to load payslips", { type: "error" }));
     }
   }, [staffId]);
+
+  const monthName = (m: number) =>
+    ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][m] || m;
 
   if (!staffId) return <div className="p-8 text-center text-error">No Staff ID provided.</div>;
 
@@ -121,10 +131,28 @@ function StaffDashboardContent() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {/* In a full implementation, we'd fetch and map payslips here */}
-              <TableRow>
-                <TableCell colSpan={4} className="text-center text-text-secondary">No payslips generated yet.</TableCell>
-              </TableRow>
+              {payslips.length > 0 ? (
+                payslips.map((p, i) => (
+                  <TableRow key={i}>
+                    <TableCell>{monthName(p.month)} {p.year}</TableCell>
+                    <TableCell className="font-semibold">₹{p.netSalary?.toLocaleString?.() ?? p.netSalary}</TableCell>
+                    <TableCell>
+                      <span className={`text-xs font-bold px-2 py-1 rounded ${p.status === "Paid" ? "bg-success/20 text-success" : "bg-warning/20 text-warning"}`}>
+                        {p.status}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <Button size="sm" variant="outline" onClick={() => toast(`Basic ₹${p.basicSalary} · Allowances ₹${p.allowances} · Deductions ₹${p.fixedDeductions + (p.lopDeductions || 0)}`, { type: "info" })}>
+                        View Breakdown
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center text-text-secondary">No payslips generated yet.</TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
