@@ -136,9 +136,14 @@ export default function AdmissionsPipelinePage() {
       <Modal isOpen={!!detail} onClose={() => setDetail(null)} title={detail ? detail.childName : ""} size="lg">
         {detail && (
           <div className="space-y-5">
-            <div className="flex gap-2 items-center">
-              <Badge variant={stageVariant(detail.status)}>{detail.status}</Badge>
-              <span className="text-sm text-text-secondary">{detail.gradeInterested} · via {detail.source}</span>
+            <div className="flex gap-2 items-center justify-between">
+              <div className="flex gap-2 items-center">
+                <Badge variant={stageVariant(detail.status)}>{detail.status}</Badge>
+                <span className="text-sm text-text-secondary">{detail.gradeInterested} · via {detail.source}</span>
+              </div>
+              <a href={`/applicants/${detail.id}`} className="text-xs font-semibold text-primary hover:underline">
+                View full profile →
+              </a>
             </div>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div><p className="text-xs text-text-secondary uppercase">Parent</p><p className="font-medium">{detail.parentName}</p></div>

@@ -5,12 +5,12 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs } from "@/components/ui/tabs";
+import { DataGrid } from "@/components/shared/DataGrid";
 import { Plus, Trash2, Edit2, CheckCircle, Search, Users, ClipboardList, Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -330,7 +330,6 @@ export default function StudentAdmissionsPage() {
   const uniqueClasses = Array.from(new Set(students.map((s) => s.enrollments?.[0]?.section?.class?.grade).filter(Boolean)));
   const uniqueSections = Array.from(new Set(students.map((s) => s.enrollments?.[0]?.section?.name).filter(Boolean)));
 
-  const totalPages = Math.ceil(filteredStudents.length / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedStudents = filteredStudents.slice(startIndex, startIndex + pageSize);
 
@@ -437,90 +436,52 @@ export default function StudentAdmissionsPage() {
               No candidates found in this category.
             </div>
           ) : (
-            <div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Admission Number</TableHead>
-                    <TableHead>Student Name</TableHead>
-                    <TableHead>Roll No.</TableHead>
-                    <TableHead>Placement Class</TableHead>
-                    <TableHead>Gender</TableHead>
-                    <TableHead>Guardian Name</TableHead>
-                    <TableHead>Doc Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedStudents.map((student) => (
-                    <TableRow key={student.id}>
-                      <TableCell className="font-semibold text-text-primary">{student.admissionNumber}</TableCell>
-                      <TableCell className="font-medium text-text-primary">{student.fullName}</TableCell>
-                      <TableCell className="font-mono text-xs">{student.enrollments?.[0]?.rollNumber || "N/A"}</TableCell>
-                      <TableCell>
-                        <Badge variant="primary">{student.enrollments?.[0]?.section?.class?.grade || "N/A"}</Badge>
-                      </TableCell>
-                      <TableCell>{student.gender}</TableCell>
-                      <TableCell>{student.guardianName}</TableCell>
-                      <TableCell>
-                        <Badge variant={student.documentsVerified ? "success" : "warning"}>
-                          {student.documentsVerified ? "Verified" : "Pending"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          {activeTab === "drafts" && (
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              className="h-8 px-2.5"
-                              leftIcon={<CheckCircle className="h-3.5 w-3.5" />}
-                              onClick={() => handleFinalSubmit(student.id)}
-                            >
-                              Final Enroll
-                            </Button>
-                          )}
-                          <Button variant="ghost" size="sm" onClick={() => router.push(`/dashboard/admin/admissions/${student.id}`)}>
-                            <Eye className="h-4 w-4 text-primary" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(student)}>
-                            <Edit2 className="h-4 w-4 text-text-secondary" />
-                          </Button>
-                          <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700" onClick={() => handleDelete(student.id)}>
-                            <Trash2 className="h-4 w-4 text-danger" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-
-              {/* Pagination Controls */}
-              <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                <p className="text-xs text-text-secondary">
-                  Showing {startIndex + 1} to {Math.min(startIndex + pageSize, filteredStudents.length)} of {filteredStudents.length} candidates
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage((p) => p - 1)}
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={currentPage === totalPages || totalPages === 0}
-                    onClick={() => setCurrentPage((p) => p + 1)}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            </div>
+            <DataGrid
+              columns={[
+                { key: "admissionNumber", header: "Admission Number", render: (student: any) => <span className="font-semibold text-text-primary">{student.admissionNumber}</span> },
+                { key: "fullName", header: "Student Name", render: (student: any) => <span className="font-medium text-text-primary">{student.fullName}</span> },
+                { key: "rollNumber", header: "Roll No.", render: (student: any) => <span className="font-mono text-xs">{student.enrollments?.[0]?.rollNumber || "N/A"}</span> },
+                { key: "grade", header: "Placement Class", render: (student: any) => <Badge variant="primary">{student.enrollments?.[0]?.section?.class?.grade || "N/A"}</Badge> },
+                { key: "gender", header: "Gender", render: (student: any) => student.gender },
+                { key: "guardianName", header: "Guardian Name", render: (student: any) => student.guardianName },
+                {
+                  key: "documentsVerified",
+                  header: "Doc Status",
+                  render: (student: any) => <Badge variant={student.documentsVerified ? "success" : "warning"}>{student.documentsVerified ? "Verified" : "Pending"}</Badge>,
+                },
+                {
+                  key: "actions",
+                  header: "Actions",
+                  className: "text-right",
+                  render: (student: any) => (
+                    <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                      {activeTab === "drafts" && (
+                        <Button variant="primary" size="sm" className="h-8 px-2.5" leftIcon={<CheckCircle className="h-3.5 w-3.5" />} onClick={() => handleFinalSubmit(student.id)}>
+                          Final Enroll
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="sm" onClick={() => router.push(`/dashboard/admin/admissions/${student.id}`)}>
+                        <Eye className="h-4 w-4 text-primary" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(student)}>
+                        <Edit2 className="h-4 w-4 text-text-secondary" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700" onClick={() => handleDelete(student.id)}>
+                        <Trash2 className="h-4 w-4 text-danger" />
+                      </Button>
+                    </div>
+                  ),
+                },
+              ]}
+              rows={paginatedStudents}
+              rowKey={(student: any) => student.id}
+              onRowClick={(student: any) => router.push(`/dashboard/admin/admissions/${student.id}`)}
+              emptyMessage="No candidates found in this category."
+              page={currentPage}
+              pageSize={pageSize}
+              totalCount={filteredStudents.length}
+              onPageChange={setCurrentPage}
+            />
           )}
         </CardContent>
       </Card>

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,7 @@ import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { Tabs } from "@/components/ui/tabs";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { DataGrid, type DataGridColumn } from "@/components/shared/DataGrid";
 import { Search, Plus, Trash2, Wallet, Calculator, Printer, CheckCircle, FileText, Settings, RotateCcw, XCircle } from "lucide-react";
 
 interface SiblingDetails {
@@ -92,6 +94,7 @@ interface ClassDef {
 
 export default function FeesPage() {
   const { toast } = useToast();
+  const router = useRouter();
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
   const ERP_API_URL = `${API_URL}/erp-core`;
 
@@ -571,7 +574,6 @@ export default function FeesPage() {
       inv.student?.admissionNumber.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const totalPages = Math.ceil(filteredInvoices.length / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedInvoices = filteredInvoices.slice(startIndex, startIndex + pageSize);
 
@@ -724,97 +726,61 @@ export default function FeesPage() {
                 No invoices found in registry.
               </div>
             ) : (
-              <div>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Admission Number</TableHead>
-                      <TableHead>Student Name</TableHead>
-                      <TableHead>Class</TableHead>
-                      <TableHead>Invoiced Amount (GST Incl)</TableHead>
-                      <TableHead>Paid Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginatedInvoices.map((inv) => {
-                      const totalPaid = inv.payments.reduce((sum, p) => sum + parseFloat(p.amountPaid), 0);
-                      return (
-                        <TableRow key={inv.id}>
-                          <TableCell className="font-semibold text-primary">{inv.student.admissionNumber}</TableCell>
-                          <TableCell className="font-medium text-text-primary">{inv.student.fullName}</TableCell>
-                          <TableCell>{inv.student.grade?.grade || "N/A"}</TableCell>
-                          <TableCell className="font-bold text-text-primary">₹{parseFloat(inv.amount).toFixed(2)}</TableCell>
-                          <TableCell className="text-success font-semibold">₹{totalPaid}</TableCell>
-                          <TableCell>
-                            <Badge variant={inv.status === "Paid" ? "success" : inv.status === "Overdue" ? "danger" : "warning"}>
-                              {inv.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right flex items-center justify-end gap-1.5">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 text-xs"
-                              leftIcon={<FileText className="h-3.5 w-3.5" />}
-                              onClick={() => {
-                                setReceiptInvoice(inv);
-                                setIsReceiptOpen(true);
-                              }}
-                            >
-                              Invoice Slip
-                            </Button>
-                            {inv.status !== "Paid" && (
-                              <Button
-                                variant="primary"
-                                size="sm"
-                                className="h-8 text-xs"
-                                onClick={() => handleOpenPayment(inv)}
-                              >
-                                Pay Fee
-                              </Button>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-danger"
-                              onClick={() => handleDeleteInvoice(inv.id)}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-
-                {/* Pagination Controls */}
-                <div className="flex items-center justify-between mt-3 pt-3 border-t">
-                  <p className="text-xs text-text-secondary">
-                    Showing {startIndex + 1} to {Math.min(startIndex + pageSize, filteredInvoices.length)} of {filteredInvoices.length} entries
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={currentPage === 1}
-                      onClick={() => setCurrentPage((p) => p - 1)}
-                    >
-                      Previous
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={currentPage === totalPages || totalPages === 0}
-                      onClick={() => setCurrentPage((p) => p + 1)}
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </div>
-              </div>
+              <DataGrid<FeeInvoiceDef>
+                columns={[
+                  { key: "admissionNumber", header: "Admission Number", render: (inv) => <span className="font-semibold text-primary">{inv.student.admissionNumber}</span> },
+                  { key: "fullName", header: "Student Name", render: (inv) => inv.student.fullName },
+                  { key: "grade", header: "Class", render: (inv) => inv.student.grade?.grade || "N/A" },
+                  { key: "amount", header: "Invoiced Amount (GST Incl)", render: (inv) => <span className="font-bold text-text-primary">₹{parseFloat(inv.amount).toFixed(2)}</span> },
+                  {
+                    key: "paid",
+                    header: "Paid Amount",
+                    render: (inv) => <span className="text-success font-semibold">₹{inv.payments.reduce((sum, p) => sum + parseFloat(p.amountPaid), 0)}</span>,
+                  },
+                  {
+                    key: "status",
+                    header: "Status",
+                    render: (inv) => <Badge variant={inv.status === "Paid" ? "success" : inv.status === "Overdue" ? "danger" : "warning"}>{inv.status}</Badge>,
+                  },
+                  {
+                    key: "actions",
+                    header: "Actions",
+                    className: "text-right",
+                    render: (inv) => (
+                      <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs"
+                          leftIcon={<FileText className="h-3.5 w-3.5" />}
+                          onClick={() => {
+                            setReceiptInvoice(inv);
+                            setIsReceiptOpen(true);
+                          }}
+                        >
+                          Invoice Slip
+                        </Button>
+                        {inv.status !== "Paid" && (
+                          <Button variant="primary" size="sm" className="h-8 text-xs" onClick={() => handleOpenPayment(inv)}>
+                            Pay Fee
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-danger" onClick={() => handleDeleteInvoice(inv.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ),
+                  },
+                ] as DataGridColumn<FeeInvoiceDef>[]}
+                rows={paginatedInvoices}
+                rowKey={(inv) => inv.id}
+                onRowClick={(inv) => router.push(`/invoices/${inv.id}`)}
+                emptyMessage="No invoices found in registry."
+                page={currentPage}
+                pageSize={pageSize}
+                totalCount={filteredInvoices.length}
+                onPageChange={setCurrentPage}
+              />
             )}
           </CardContent>
         </Card>

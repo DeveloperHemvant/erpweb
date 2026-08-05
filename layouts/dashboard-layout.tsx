@@ -7,14 +7,6 @@ import { useTheme } from "@/providers/theme-provider";
 import { useToast } from "@/components/ui/toast";
 import {
   GraduationCap,
-  LayoutDashboard,
-  Users,
-  UserCheck,
-  Calendar,
-  DollarSign,
-  Settings,
-  Bell,
-  Search,
   ChevronLeft,
   Menu,
   Sun,
@@ -22,25 +14,14 @@ import {
   ChevronDown,
   LogOut,
   HelpCircle,
-  FileText,
-  Clock,
-  Compass,
-  BookOpen,
-  MapPin,
-  Activity,
-  Boxes
+  Bell,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-
-interface SidebarItem {
-  name: string;
-  href: string;
-  icon: React.ReactNode;
-  group?: "core" | "administration" | "operational" | "system";
-  reqModule?: string;
-}
+import { workspaces, visibleItems } from "./workspace-config";
+import { Omnibox, type OmniboxGroup } from "@/components/shared/Omnibox";
 
 import { hasModuleAccess, getUserFromStorage } from "@/lib/auth";
 
@@ -124,59 +105,70 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   };
 
   // Keyboard shortcut listener (Cmd+K or Ctrl+K for global search focus)
+  const [omniboxOpen, setOmniboxOpen] = useState(false);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
-        const searchInput = document.getElementById("global-search");
-        searchInput?.focus();
-        toast("Search Focus Activated", { description: "Use arrow keys to navigate suggestions", type: "info" });
+        setOmniboxOpen(true);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [toast]);
+  }, []);
 
-  const menuItems: SidebarItem[] = [
-    // Core — used every day, top of mind
-    { name: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-4 w-4" />, group: "core" },
-    { name: "My Calendar", href: "/dashboard/calendar", icon: <Calendar className="h-4 w-4" />, group: "core", reqModule: "attendance" },
-    { name: "Attendance Desk", href: "/dashboard/admin/attendance", icon: <UserCheck className="h-4 w-4" />, group: "core", reqModule: "attendance" },
-    { name: "Student Showcase", href: "/dashboard/students", icon: <Users className="h-4 w-4" />, group: "core", reqModule: "students" },
-    { name: "Fees & Finance", href: "/dashboard/fees", icon: <DollarSign className="h-4 w-4" />, group: "core", reqModule: "fees" },
+  // Command Palette (IA §7) — real federated search results (Phase 7), debounced,
+  // merged into the Omnibox alongside the existing client-side navigation group.
+  const [recordResults, setRecordResults] = useState<any[]>([]);
+  const [recordsLoading, setRecordsLoading] = useState(false);
 
-    // Student & Academic Admin — in the order a student actually moves through the year
-    { name: "Student Admissions", href: "/dashboard/admin/admissions", icon: <GraduationCap className="h-4 w-4" />, group: "administration", reqModule: "students" },
-    { name: "School Calendar (Holidays & Terms)", href: "/dashboard/admin/calendar", icon: <Calendar className="h-4 w-4" />, group: "administration", reqModule: "masterdata" },
-    { name: "Timetable Desk", href: "/dashboard/admin/timetable", icon: <Calendar className="h-4 w-4" />, group: "administration", reqModule: "masterdata" },
-    { name: "LMS Course Desk", href: "/dashboard/admin/lms", icon: <BookOpen className="h-4 w-4" />, group: "administration", reqModule: "reportcards" },
-    { name: "Exams Desk (EMS)", href: "/dashboard/admin/exams", icon: <FileText className="h-4 w-4" />, group: "administration", reqModule: "reportcards" },
-    { name: "Report Cards", href: "/dashboard/admin/report-cards", icon: <FileText className="h-4 w-4" />, group: "administration", reqModule: "reportcards" },
-    { name: "Student Promotion", href: "/dashboard/admin/promotions", icon: <GraduationCap className="h-4 w-4" />, group: "administration", reqModule: "students" },
-    { name: "Admissions Pipeline", href: "/dashboard/admin/admissions-pipeline", icon: <GraduationCap className="h-4 w-4" />, group: "administration", reqModule: "admissionspipeline" },
-    { name: "Discipline & Behavior", href: "/dashboard/admin/discipline", icon: <HelpCircle className="h-4 w-4" />, group: "administration", reqModule: "discipline" },
+  useEffect(() => {
+    if (!omniboxOpen || searchQuery.trim().length < 2) {
+      setRecordResults([]);
+      return;
+    }
+    const token = localStorage.getItem("token");
+    const controller = new AbortController();
+    setRecordsLoading(true);
+    const debounce = setTimeout(() => {
+      fetch(`${API_URL}/search?q=${encodeURIComponent(searchQuery)}&limit=10`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        signal: controller.signal,
+      })
+        .then((res) => (res.ok ? res.json() : []))
+        .then((rows) => setRecordResults(Array.isArray(rows) ? rows : []))
+        .catch(() => {})
+        .finally(() => setRecordsLoading(false));
+    }, 250);
+    return () => {
+      clearTimeout(debounce);
+      controller.abort();
+    };
+  }, [searchQuery, omniboxOpen]);
 
-    // Staff & Operations — staff lifecycle, then day-to-day operational desks
-    { name: "Staff Onboarding", href: "/dashboard/admin/staff-onboarding", icon: <Users className="h-4 w-4" />, group: "operational", reqModule: "staff" },
-    { name: "HR & Payroll", href: "/dashboard/admin/hr", icon: <FileText className="h-4 w-4" />, group: "operational", reqModule: "staff" },
-    { name: "Transport", href: "/dashboard/admin/transport", icon: <MapPin className="h-4 w-4" />, group: "operational", reqModule: "masterdata" },
-    { name: "Hostel & Mess", href: "/dashboard/admin/hostel", icon: <HelpCircle className="h-4 w-4" />, group: "operational", reqModule: "masterdata" },
-    { name: "Health Centre", href: "/dashboard/admin/health-records", icon: <HelpCircle className="h-4 w-4" />, group: "operational", reqModule: "healthrecords" },
-    { name: "Library", href: "/dashboard/admin/library", icon: <BookOpen className="h-4 w-4" />, group: "operational", reqModule: "masterdata" },
-    { name: "Inventory & Assets", href: "/dashboard/admin/inventory", icon: <Boxes className="h-4 w-4" />, group: "operational", reqModule: "masterdata" },
-    { name: "ID Card Templates", href: "/dashboard/settings/idcard-templates", icon: <FileText className="h-4 w-4" />, group: "operational", reqModule: "masterdata" },
-    { name: "Certificate Designer", href: "/dashboard/admin/certificates", icon: <FileText className="h-4 w-4" />, group: "operational", reqModule: "masterdata" },
-    { name: "Announcements", href: "/dashboard/admin/announcements", icon: <Bell className="h-4 w-4" />, group: "operational", reqModule: "masterdata" },
+  // Every workspace item this user can currently access, flattened once — the
+  // Omnibox's navigation results source until Phase 7's federated search index exists.
+  const accessibleWorkspaceItems = workspaces.map((ws) => ({
+    workspace: ws,
+    items: visibleItems(ws.items, mounted, hasModuleAccess),
+  }));
 
-    // System — configured once, revisited rarely
-    { name: "Master Data Config", href: "/dashboard/admin/master-data", icon: <Compass className="h-4 w-4" />, group: "system", reqModule: "masterdata" },
-    { name: "Roles & Permissions", href: "/dashboard/admin/roles-permissions", icon: <Settings className="h-4 w-4" />, group: "system", reqModule: "roles" },
-    { name: "Bulk Data Import", href: "/dashboard/admin/import", icon: <FileText className="h-4 w-4" />, group: "system", reqModule: "masterdata" },
-    { name: "Audit Logs", href: "/dashboard/admin/audit-logs", icon: <Activity className="h-4 w-4" />, group: "system", reqModule: "roles" },
-    { name: "Server Monitoring", href: "/dashboard/admin/monitoring", icon: <Activity className="h-4 w-4" />, group: "system", reqModule: "roles" },
-    { name: "Background Tasks", href: "/dashboard/admin/jobs", icon: <Clock className="h-4 w-4" />, group: "system", reqModule: "roles" },
-    { name: "System Settings", href: "/dashboard/settings", icon: <Settings className="h-4 w-4" />, group: "system", reqModule: "roles" },
-  ];
+  const navigateGroups: OmniboxGroup[] = accessibleWorkspaceItems
+    .map(({ workspace, items }) => ({
+      group: workspace.label,
+      items: items
+        .filter((item) => item.name.toLowerCase().includes(searchQuery.toLowerCase()))
+        .map((item) => ({ id: item.href, label: item.name, href: item.href, icon: item.icon })),
+    }))
+    .filter((g) => g.items.length > 0);
+
+  const recordsGroup: OmniboxGroup = {
+    group: "Records",
+    items: recordResults.map((r) => ({ id: r.id, label: r.title, description: r.subtitle, href: r.href })),
+  };
+
+  const omniboxGroups: OmniboxGroup[] = recordsGroup.items.length > 0 ? [recordsGroup, ...navigateGroups] : navigateGroups;
 
   const handleLogout = () => {
     toast("Logged out successfully", { description: "Redirecting to landing page...", type: "success" });
@@ -200,7 +192,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       {/* Sidebar Desktop */}
       <aside
         className={cn(
-          "hidden md:flex flex-col bg-sidebar text-sidebar-fg border-r border-white/10 transition-all duration-300 sticky top-0 h-screen shrink-0",
+          "hidden md:flex flex-col bg-sidebar text-sidebar-fg border-r border-white/10 transition-all duration-[var(--duration-base)] ease-[var(--ease-standard)] sticky top-0 h-screen shrink-0",
           isCollapsed ? "w-20" : "w-64"
         )}
       >
@@ -242,76 +234,29 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
-        {/* Navigation Grouped */}
+        {/* Workspace Rail (IA §2/§14) — one group per workspace, filter logic centralized once */}
         <div className="flex-1 overflow-y-auto px-2.5 py-3 space-y-4">
-          {/* Core group */}
-          <div className="space-y-1">
-            {!isCollapsed && (
-              <span className="px-3.5 text-[10px] font-bold text-slate-300 uppercase tracking-wider block mb-2">
-                Academic Modules
-              </span>
-            )}
-            {menuItems
-              .filter((item) => item.group === "core" && (!item.reqModule || (mounted && hasModuleAccess(item.reqModule))))
-              .map((item) => (
-                <Link key={item.name} href={item.href} className={navLinkClass(item.href)}>
-                  {item.icon}
-                  {!isCollapsed && <span>{item.name}</span>}
-                </Link>
-              ))}
-          </div>
-
-          {/* Administration group */}
-          <div className="space-y-1">
-            {!isCollapsed && (
-              <span className="px-3.5 text-[10px] font-bold text-slate-300 uppercase tracking-wider block mb-2">
-                Student & Academic Admin
-              </span>
-            )}
-            {menuItems
-              .filter((item) => item.group === "administration" && (!item.reqModule || (mounted && hasModuleAccess(item.reqModule))))
-              .map((item) => (
-                <Link key={item.name} href={item.href} className={navLinkClass(item.href)}>
-                  {item.icon}
-                  {!isCollapsed && <span>{item.name}</span>}
-                </Link>
-              ))}
-          </div>
-
-          {/* Operational group */}
-          <div className="space-y-1">
-            {!isCollapsed && (
-              <span className="px-3.5 text-[10px] font-bold text-slate-300 uppercase tracking-wider block mb-2">
-                Staff & Operations
-              </span>
-            )}
-            {menuItems
-              .filter((item) => item.group === "operational" && (!item.reqModule || (mounted && hasModuleAccess(item.reqModule))))
-              .map((item) => (
-                <Link key={item.name} href={item.href} className={navLinkClass(item.href)}>
-                  {item.icon}
-                  {!isCollapsed && <span>{item.name}</span>}
-                </Link>
-              ))}
-          </div>
-
-          {/* System group */}
-          <div className="space-y-1">
-            {!isCollapsed && (
-              <span className="px-3.5 text-[10px] font-bold text-slate-300 uppercase tracking-wider block mb-2">
-                System
-              </span>
-            )}
-            {menuItems
-              .filter((item) => item.group === "system" && (!item.reqModule || (mounted && hasModuleAccess(item.reqModule))))
-              .map((item) => (
-                <Link key={item.name} href={item.href} className={navLinkClass(item.href)}>
-                  {item.icon}
-                  {!isCollapsed && <span>{item.name}</span>}
-                </Link>
-              ))}
-          </div>
-
+          {accessibleWorkspaceItems.map(({ workspace, items }) =>
+            items.length === 0 ? null : (
+              <div key={workspace.key} className="space-y-1">
+                {!isCollapsed && (
+                  <Link
+                    href={`/workspace/${workspace.key}`}
+                    className="px-3.5 text-[10px] font-bold text-slate-300 hover:text-white uppercase tracking-wider flex items-center gap-1.5 mb-2 transition-colors"
+                  >
+                    {workspace.icon}
+                    {workspace.label}
+                  </Link>
+                )}
+                {items.map((item) => (
+                  <Link key={item.name} href={item.href} className={navLinkClass(item.href)}>
+                    {item.icon}
+                    {!isCollapsed && <span>{item.name}</span>}
+                  </Link>
+                ))}
+              </div>
+            )
+          )}
         </div>
 
         {/* Sidebar Footer */}
@@ -339,23 +284,19 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <Menu className="h-5 w-5" />
             </button>
 
-            {/* Global Search */}
-            <div className="relative hidden sm:block w-64 md:w-80">
-              <span className="absolute left-3 top-3 text-text-secondary">
+            {/* Global Search — opens the Omnibox (IA §6/§7), replacing the old non-functional input */}
+            <button
+              onClick={() => setOmniboxOpen(true)}
+              className="relative hidden sm:flex items-center w-64 md:w-80 h-10 pl-9 pr-12 rounded-btn bg-slate-50/90 dark:bg-slate-800/80 border border-border text-sm text-text-secondary shadow-[0_1px_2px_rgba(3,22,53,0.04)] cursor-pointer hover:border-primary/40 transition-colors"
+            >
+              <span className="absolute left-3 text-text-secondary">
                 <Search className="h-4 w-4" />
               </span>
-              <input
-                id="global-search"
-                type="text"
-                placeholder="Global search... (Ctrl+K)"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-10 pl-9 pr-12 rounded-btn bg-slate-50/90 dark:bg-slate-800/80 border border-border text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-text-primary shadow-[0_1px_2px_rgba(3,22,53,0.04)]"
-              />
-              <span className="absolute right-3 top-2.5 text-[10px] font-bold bg-slate-200/80 dark:bg-slate-700 px-1.5 py-0.5 rounded text-text-secondary">
+              <span className="truncate">Global search... (Ctrl+K)</span>
+              <span className="absolute right-3 text-[10px] font-bold bg-slate-200/80 dark:bg-slate-700 px-1.5 py-0.5 rounded text-text-secondary">
                 &#8984;K
               </span>
-            </div>
+            </button>
           </div>
 
           <div className="flex items-center gap-4">
@@ -459,27 +400,50 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <ChevronLeft className="h-5 w-5" />
               </button>
             </div>
-            <div className="space-y-1">
-              {menuItems.map((item) => (
-                <div
-                  key={item.name}
-                  onClick={() => {
-                    router.push(item.href);
-                    setIsMobileOpen(false);
-                  }}
-                  className={navLinkClass(item.href)}
-                >
-                  {item.icon}
-                  <span>{item.name}</span>
-                  {mounted && userProfile?.permissions?.includes("*") && (
-                    <Badge variant="warning" className="text-[9px] uppercase mt-1">Super Admin</Badge>
-                  )}
-                </div>
-              ))}
+            <div className="space-y-4 overflow-y-auto">
+              {accessibleWorkspaceItems.map(({ workspace, items }) =>
+                items.length === 0 ? null : (
+                  <div key={workspace.key} className="space-y-1">
+                    <Link
+                      href={`/workspace/${workspace.key}`}
+                      onClick={() => setIsMobileOpen(false)}
+                      className="px-3.5 text-[10px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5 mb-1"
+                    >
+                      {workspace.icon}
+                      {workspace.label}
+                    </Link>
+                    {items.map((item) => (
+                      <div
+                        key={item.name}
+                        onClick={() => {
+                          router.push(item.href);
+                          setIsMobileOpen(false);
+                        }}
+                        className={navLinkClass(item.href)}
+                      >
+                        {item.icon}
+                        <span>{item.name}</span>
+                        {mounted && userProfile?.permissions?.includes("*") && (
+                          <Badge variant="warning" className="text-[9px] uppercase mt-1">Super Admin</Badge>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )
+              )}
             </div>
           </aside>
         </div>
       )}
+
+      <Omnibox
+        open={omniboxOpen}
+        onOpenChange={setOmniboxOpen}
+        value={searchQuery}
+        onChange={setSearchQuery}
+        groups={omniboxGroups}
+        loading={recordsLoading}
+      />
     </div>
   );
 }

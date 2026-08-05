@@ -6,6 +6,12 @@ import { EntityPageShell } from "@/components/shared/EntityPageShell";
 import { DataGrid } from "@/components/shared/DataGrid";
 import { AttachmentList } from "@/components/shared/AttachmentList";
 import { StatusPill } from "@/components/shared/StatusPill";
+import { Timeline } from "@/components/ui/timeline";
+import { useEntityTimeline } from "@/hooks/useEntityTimeline";
+import { ActionMenu, useFavorite, buildStandardActions } from "@/components/shared/ActionMenu";
+import { CommentThread } from "@/components/shared/CommentThread";
+import { useComments } from "@/hooks/useComments";
+import { getUserFromStorage } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { ArrowUpRight } from "lucide-react";
 
@@ -32,6 +38,8 @@ const TABS = [
   { id: "health", label: "Health" },
   { id: "discipline", label: "Discipline" },
   { id: "documents", label: "Documents" },
+  { id: "comments", label: "Comments" },
+  { id: "activity", label: "Activity" },
 ];
 
 /** Tabs with no admin-scoped backend endpoint today — bridge out to the existing workspace rather than fabricate data. */
@@ -59,6 +67,10 @@ export default function StudentEntityPage() {
   const [activeTab, setActiveTab] = useState("overview");
   const [tabData, setTabData] = useState<Record<string, any>>({});
   const [tabLoading, setTabLoading] = useState<Record<string, boolean>>({});
+  const timeline = useEntityTimeline("student", id);
+  const favorite = useFavorite("student", id);
+  const comments = useComments("student", id);
+  const currentUser = getUserFromStorage();
 
   useEffect(() => {
     if (!id) return;
@@ -152,9 +164,12 @@ export default function StudentEntityPage() {
           profile.phone ? { label: "Phone", value: profile.phone } : null,
         ].filter(Boolean) as any,
         actions: (
-          <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/admin/admissions`)}>
-            Admissions
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/admin/admissions`)}>
+              Admissions
+            </Button>
+            <ActionMenu items={buildStandardActions({ isFavorite: favorite.isFavorite, onToggleFavorite: favorite.toggle })} />
+          </div>
         ),
       }}
       tabs={TABS}
@@ -345,6 +360,22 @@ export default function StudentEntityPage() {
             url: d.fileUrl,
           }))}
         />
+      )}
+
+      {activeTab === "comments" && (
+        <CommentThread
+          entityType="student"
+          entityId={id}
+          comments={comments.comments}
+          loading={comments.loading}
+          posting={comments.posting}
+          onSubmit={comments.submit}
+          currentUserName={currentUser?.fullName ?? "You"}
+        />
+      )}
+
+      {activeTab === "activity" && (
+        <Timeline items={timeline.items} loading={timeline.loading} emptyMessage="No audit-log activity recorded for this student yet." />
       )}
     </EntityPageShell>
   );

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
+import { DataGrid } from "@/components/shared/DataGrid";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -113,38 +114,19 @@ export default function DisciplinePage() {
           <div className="w-48"><Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} options={[opt("All statuses", ""), ...STATUSES.map((s) => opt(s, s))]} /></div>
         </CardHeader>
         <CardContent>
-          {filtered.length === 0 ? (
-            <div className="p-8 text-center border border-dashed rounded-lg text-text-secondary">No incidents.</div>
-          ) : (
-            <div className="border rounded-lg overflow-hidden">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-slate-50 dark:bg-slate-900 border-b">
-                  <tr>
-                    <th className="px-4 py-3 font-medium">Student</th>
-                    <th className="px-4 py-3 font-medium">Category</th>
-                    <th className="px-4 py-3 font-medium">Severity</th>
-                    <th className="px-4 py-3 font-medium">Date</th>
-                    <th className="px-4 py-3 font-medium">Status</th>
-                    <th className="px-4 py-3 font-medium text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {filtered.map((i: any) => (
-                    <tr key={i.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
-                      <td className="px-4 py-3 font-medium">{i.student?.fullName}</td>
-                      <td className="px-4 py-3 text-text-secondary">{i.category}</td>
-                      <td className="px-4 py-3"><Badge variant={severityVariant(i.severity)}>{i.severity}</Badge></td>
-                      <td className="px-4 py-3 text-text-secondary">{new Date(i.incidentDate).toLocaleDateString()}</td>
-                      <td className="px-4 py-3"><Badge variant={statusVariant(i.status)}>{i.status}</Badge></td>
-                      <td className="px-4 py-3 text-right">
-                        <Button variant="outline" size="sm" onClick={() => openDetail(i.studentId, i.id)}>View</Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <DataGrid
+            columns={[
+              { key: "student", header: "Student", render: (i: any) => <span className="font-medium">{i.student?.fullName}</span> },
+              { key: "category", header: "Category", render: (i: any) => <span className="text-text-secondary">{i.category}</span> },
+              { key: "severity", header: "Severity", render: (i: any) => <Badge variant={severityVariant(i.severity)}>{i.severity}</Badge> },
+              { key: "date", header: "Date", render: (i: any) => new Date(i.incidentDate).toLocaleDateString() },
+              { key: "status", header: "Status", render: (i: any) => <Badge variant={statusVariant(i.status)}>{i.status}</Badge> },
+            ]}
+            rows={filtered}
+            rowKey={(i: any) => i.id}
+            onRowClick={(i: any) => openDetail(i.studentId, i.id)}
+            emptyMessage="No incidents."
+          />
         </CardContent>
       </Card>
 
@@ -174,9 +156,14 @@ export default function DisciplinePage() {
       <Modal isOpen={!!detail} onClose={() => setDetail(null)} title={detail ? `${detail.student?.fullName} — ${detail.category}` : ""} size="lg">
         {detail && (
           <div className="space-y-5">
-            <div className="flex gap-2">
-              <Badge variant={severityVariant(detail.severity)}>{detail.severity}</Badge>
-              <Badge variant={statusVariant(detail.status)}>{detail.status}</Badge>
+            <div className="flex gap-2 items-center justify-between">
+              <div className="flex gap-2">
+                <Badge variant={severityVariant(detail.severity)}>{detail.severity}</Badge>
+                <Badge variant={statusVariant(detail.status)}>{detail.status}</Badge>
+              </div>
+              <a href={`/discipline-cases/${detail.id}`} className="text-xs font-semibold text-primary hover:underline">
+                View full profile →
+              </a>
             </div>
             <p className="text-sm">{detail.description}</p>
             <p className="text-xs text-text-secondary">Reported by {detail.reportedByStaff?.fullName} on {new Date(detail.incidentDate).toLocaleString()}</p>

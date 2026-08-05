@@ -1,14 +1,15 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import { Tabs } from "@/components/ui/tabs";
+import { DataGrid } from "@/components/shared/DataGrid";
 import { Users, DollarSign, Activity, CheckCircle2, XCircle, Plus } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -25,6 +26,7 @@ async function api(path: string, opts: RequestInit = {}) {
 
 export default function HrAdminDashboard() {
   const { toast } = useToast();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("payroll");
 
   const [isRunning, setIsRunning] = useState(false);
@@ -182,34 +184,22 @@ export default function HrAdminDashboard() {
                   No payslips generated for this month yet. Click &quot;Run Payroll Now&quot; above.
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Staff</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Basic</TableHead>
-                      <TableHead>Allowances</TableHead>
-                      <TableHead>Deductions</TableHead>
-                      <TableHead>LOP</TableHead>
-                      <TableHead>Net Salary</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {payslips.map((p) => (
-                      <TableRow key={p.id}>
-                        <TableCell className="font-medium">{p.staff?.fullName}</TableCell>
-                        <TableCell className="text-text-secondary">{p.staff?.role?.name}</TableCell>
-                        <TableCell>₹{Number(p.basicSalary).toLocaleString()}</TableCell>
-                        <TableCell>₹{Number(p.allowances).toLocaleString()}</TableCell>
-                        <TableCell>₹{Number(p.fixedDeductions).toLocaleString()}</TableCell>
-                        <TableCell className={Number(p.lopDeductions) > 0 ? "text-danger" : ""}>₹{Number(p.lopDeductions).toLocaleString()}</TableCell>
-                        <TableCell className="font-bold">₹{Number(p.netSalary).toLocaleString()}</TableCell>
-                        <TableCell><Badge variant={p.status === "Paid" ? "success" : "neutral"}>{p.status}</Badge></TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <DataGrid
+                  columns={[
+                    { key: "staff", header: "Staff", render: (p: any) => <span className="font-medium">{p.staff?.fullName}</span> },
+                    { key: "role", header: "Role", render: (p: any) => <span className="text-text-secondary">{p.staff?.role?.name}</span> },
+                    { key: "basicSalary", header: "Basic", render: (p: any) => `₹${Number(p.basicSalary).toLocaleString()}` },
+                    { key: "allowances", header: "Allowances", render: (p: any) => `₹${Number(p.allowances).toLocaleString()}` },
+                    { key: "fixedDeductions", header: "Deductions", render: (p: any) => `₹${Number(p.fixedDeductions).toLocaleString()}` },
+                    { key: "lopDeductions", header: "LOP", render: (p: any) => <span className={Number(p.lopDeductions) > 0 ? "text-danger" : ""}>₹{Number(p.lopDeductions).toLocaleString()}</span> },
+                    { key: "netSalary", header: "Net Salary", render: (p: any) => <span className="font-bold">₹{Number(p.netSalary).toLocaleString()}</span> },
+                    { key: "status", header: "Status", render: (p: any) => <Badge variant={p.status === "Paid" ? "success" : "neutral"}>{p.status}</Badge> },
+                  ]}
+                  rows={payslips}
+                  rowKey={(p: any) => p.id}
+                  onRowClick={(p: any) => p.staff?.id && router.push(`/staff/${p.staff.id}`)}
+                  emptyMessage="No payslips generated for this month yet."
+                />
               )}
             </CardContent>
           </Card>
@@ -228,45 +218,37 @@ export default function HrAdminDashboard() {
             ) : leaves.length === 0 ? (
               <div className="p-8 text-center border border-dashed rounded-lg text-text-secondary">No leave applications found.</div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Staff</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Dates</TableHead>
-                    <TableHead>Reason</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {leaves.map((l) => (
-                    <TableRow key={l.id}>
-                      <TableCell className="font-medium">{l.staff?.fullName}</TableCell>
-                      <TableCell>{l.leaveType}</TableCell>
-                      <TableCell className="text-text-secondary">{new Date(l.startDate).toLocaleDateString()} – {new Date(l.endDate).toLocaleDateString()}</TableCell>
-                      <TableCell className="text-text-secondary">{l.reason || "—"}</TableCell>
-                      <TableCell>
-                        <Badge variant={l.status === "Approved" ? "success" : l.status === "Rejected" ? "danger" : "warning"}>{l.status}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {l.status === "Pending" ? (
-                          <div className="flex justify-end gap-1">
-                            <Button variant="outline" size="sm" disabled={processingLeaveId === l.id} onClick={() => processLeave(l.id, "Approved")}>
-                              <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-success" /> Approve
-                            </Button>
-                            <Button variant="outline" size="sm" disabled={processingLeaveId === l.id} onClick={() => processLeave(l.id, "Rejected")}>
-                              <XCircle className="w-3.5 h-3.5 mr-1 text-danger" /> Reject
-                            </Button>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-text-secondary">by {l.resolvedBy?.fullName || "—"}</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <DataGrid
+                columns={[
+                  { key: "staff", header: "Staff", render: (l: any) => <span className="font-medium">{l.staff?.fullName}</span> },
+                  { key: "leaveType", header: "Type" },
+                  { key: "dates", header: "Dates", render: (l: any) => <span className="text-text-secondary">{new Date(l.startDate).toLocaleDateString()} – {new Date(l.endDate).toLocaleDateString()}</span> },
+                  { key: "reason", header: "Reason", render: (l: any) => <span className="text-text-secondary">{l.reason || "—"}</span> },
+                  { key: "status", header: "Status", render: (l: any) => <Badge variant={l.status === "Approved" ? "success" : l.status === "Rejected" ? "danger" : "warning"}>{l.status}</Badge> },
+                  {
+                    key: "actions",
+                    header: "Actions",
+                    className: "text-right",
+                    render: (l: any) =>
+                      l.status === "Pending" ? (
+                        <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                          <Button variant="outline" size="sm" disabled={processingLeaveId === l.id} onClick={() => processLeave(l.id, "Approved")}>
+                            <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-success" /> Approve
+                          </Button>
+                          <Button variant="outline" size="sm" disabled={processingLeaveId === l.id} onClick={() => processLeave(l.id, "Rejected")}>
+                            <XCircle className="w-3.5 h-3.5 mr-1 text-danger" /> Reject
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-text-secondary">by {l.resolvedBy?.fullName || "—"}</span>
+                      ),
+                  },
+                ]}
+                rows={leaves}
+                rowKey={(l: any) => l.id}
+                onRowClick={(l: any) => l.staff?.id && router.push(`/staff/${l.staff.id}`)}
+                emptyMessage="No leave applications found."
+              />
             )}
           </CardContent>
         </Card>
@@ -287,28 +269,19 @@ export default function HrAdminDashboard() {
             ) : reviews.length === 0 ? (
               <div className="p-8 text-center border border-dashed rounded-lg text-text-secondary">No performance reviews logged yet.</div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Staff</TableHead>
-                    <TableHead>Cycle</TableHead>
-                    <TableHead>Rating</TableHead>
-                    <TableHead>Reviewer</TableHead>
-                    <TableHead>Comments</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {reviews.map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell className="font-medium">{r.staff?.fullName}</TableCell>
-                      <TableCell>{r.cycle}</TableCell>
-                      <TableCell><Badge variant={r.rating >= 4 ? "success" : r.rating === 3 ? "warning" : "danger"}>{r.rating} / 5</Badge></TableCell>
-                      <TableCell className="text-text-secondary">{r.reviewer?.fullName}</TableCell>
-                      <TableCell className="text-text-secondary">{r.comments || "—"}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <DataGrid
+                columns={[
+                  { key: "staff", header: "Staff", render: (r: any) => <span className="font-medium">{r.staff?.fullName}</span> },
+                  { key: "cycle", header: "Cycle" },
+                  { key: "rating", header: "Rating", render: (r: any) => <Badge variant={r.rating >= 4 ? "success" : r.rating === 3 ? "warning" : "danger"}>{r.rating} / 5</Badge> },
+                  { key: "reviewer", header: "Reviewer", render: (r: any) => <span className="text-text-secondary">{r.reviewer?.fullName}</span> },
+                  { key: "comments", header: "Comments", render: (r: any) => <span className="text-text-secondary">{r.comments || "—"}</span> },
+                ]}
+                rows={reviews}
+                rowKey={(r: any) => r.id}
+                onRowClick={(r: any) => r.staff?.id && router.push(`/staff/${r.staff.id}`)}
+                emptyMessage="No performance reviews logged yet."
+              />
             )}
           </CardContent>
         </Card>

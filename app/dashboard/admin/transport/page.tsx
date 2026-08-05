@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +9,7 @@ import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { Tabs } from "@/components/ui/tabs";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { DataGrid } from "@/components/shared/DataGrid";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { Bus, Navigation, Users, Plus, ShieldCheck, Map, MapPin, Gauge, Wrench, AlertTriangle, Receipt, Trash, CheckCircle, XCircle } from "lucide-react";
@@ -19,6 +21,7 @@ import { computeFleetCompliance } from "@/components/transport/compliance";
 
 export default function TransportManagementPage() {
   const { toast } = useToast();
+  const router = useRouter();
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
@@ -446,60 +449,47 @@ export default function TransportManagementPage() {
               </Button>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Vehicle Reg. No</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Fuel</TableHead>
-                    <TableHead>Capacity</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Assigned Staff</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {vehicles.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="text-center py-6 text-text-secondary">No vehicles registered yet.</TableCell></TableRow>
-                  ) : (
-                    vehicles.map(v => (
-                      <TableRow key={v.id}>
-                        <TableCell className="font-semibold">{v.vehicleNumber}</TableCell>
-                        <TableCell>{v.vehicleType}</TableCell>
-                        <TableCell>{v.fuelType}</TableCell>
-                        <TableCell>{v.seatingCapacity} Seats</TableCell>
-                        <TableCell>
-                          <Badge variant={v.status === "Active" ? "success" : "neutral"}>{v.status}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-2 mr-1">
-                                {v.staff?.map((s: any) => (
-                                  <div key={s.id} className="w-8 h-8 rounded-full bg-primary/20 border-2 border-white flex items-center justify-center text-xs font-bold text-primary transition-transform hover:scale-105" title={`${s.staff?.fullName} - ${s.shift}`}>
-                                    {s.staff?.fullName?.charAt(0) || "S"}
-                                  </div>
-                                ))}
+              <DataGrid
+                columns={[
+                  { key: "vehicleNumber", header: "Vehicle Reg. No", render: (v: any) => <span className="font-semibold">{v.vehicleNumber}</span> },
+                  { key: "vehicleType", header: "Type" },
+                  { key: "fuelType", header: "Fuel" },
+                  { key: "seatingCapacity", header: "Capacity", render: (v: any) => `${v.seatingCapacity} Seats` },
+                  { key: "status", header: "Status", render: (v: any) => <Badge variant={v.status === "Active" ? "success" : "neutral"}>{v.status}</Badge> },
+                  {
+                    key: "staff",
+                    header: "Assigned Staff",
+                    render: (v: any) => (
+                      <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-2 mr-1">
+                          {v.staff?.map((s: any) => (
+                            <div key={s.id} className="w-8 h-8 rounded-full bg-primary/20 border-2 border-white flex items-center justify-center text-xs font-bold text-primary transition-transform hover:scale-105" title={`${s.staff?.fullName} - ${s.shift}`}>
+                              {s.staff?.fullName?.charAt(0) || "S"}
                             </div>
-                            <Button size="sm" variant="outline" onClick={() => { setSelectedVehicleId(v.id); setIsAssignStaffOpen(true); }}>Assign Crew</Button>
-                            <Button size="sm" variant="outline" onClick={() => { setEditingVehicle(v); setIsEditVehicleOpen(true); }}>Edit</Button>
-
-                            <Button size="sm" variant="primary" onClick={async () => {
-                              try {
-                                const res = await fetch(`${API_URL}/transport/vehicles/${v.id}/profile`, { headers: authHeaders });
-                                if (res.ok) {
-                                  setVehicleProfile(await res.json());
-                                  setIsVehicleProfileOpen(true);
-                                }
-                              } catch (e) {
-                                toast("Error", { description: "Failed to load profile", type: "error" });
-                              }
-                            }}>View Profile</Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                          ))}
+                        </div>
+                        <Button size="sm" variant="outline" onClick={() => { setSelectedVehicleId(v.id); setIsAssignStaffOpen(true); }}>Assign Crew</Button>
+                        <Button size="sm" variant="outline" onClick={() => { setEditingVehicle(v); setIsEditVehicleOpen(true); }}>Edit</Button>
+                        <Button size="sm" variant="primary" onClick={async () => {
+                          try {
+                            const res = await fetch(`${API_URL}/transport/vehicles/${v.id}/profile`, { headers: authHeaders });
+                            if (res.ok) {
+                              setVehicleProfile(await res.json());
+                              setIsVehicleProfileOpen(true);
+                            }
+                          } catch (e) {
+                            toast("Error", { description: "Failed to load profile", type: "error" });
+                          }
+                        }}>View Profile</Button>
+                      </div>
+                    ),
+                  },
+                ]}
+                rows={vehicles}
+                rowKey={(v: any) => v.id}
+                onRowClick={(v: any) => router.push(`/vehicles/${v.id}`)}
+                emptyMessage="No vehicles registered yet."
+              />
             </CardContent>
           </Card>
         </div>
@@ -534,7 +524,12 @@ export default function TransportManagementPage() {
                           <h3 className="font-bold text-lg text-primary">{r.routeName}</h3>
                           <p className="text-sm text-text-secondary">{r.distance || 0} KM • {r.estimatedTime || "TBD"}</p>
                         </div>
-                        <Button size="sm" variant="outline" onClick={() => { setSelectedRouteId(r.id); setIsAddStopOpen(true); }}>Add Stop</Button>
+                        <div className="flex items-center gap-2">
+                          <a href={`/routes/${r.id}`} className="text-xs font-semibold text-primary hover:underline">
+                            View full profile →
+                          </a>
+                          <Button size="sm" variant="outline" onClick={() => { setSelectedRouteId(r.id); setIsAddStopOpen(true); }}>Add Stop</Button>
+                        </div>
                       </div>
                       
                       {/* Visual Stop Timeline */}

@@ -2,21 +2,29 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, UserPlus, ChevronLeft, ChevronRight } from "lucide-react";
+import { UserPlus } from "lucide-react";
+import { DataGrid, type DataGridColumn } from "@/components/shared/DataGrid";
+
+interface StudentRow {
+  id: string;
+  admissionNumber: string;
+  fullName: string;
+  status: string;
+  enrollments?: { section?: { name?: string; class?: { grade?: string } } }[];
+}
 
 export default function StudentsPage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
-  const [students, setStudents] = useState<any[]>([]);
+  const [students, setStudents] = useState<StudentRow[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const limit = 10;
-  
+
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
   useEffect(() => {
@@ -37,7 +45,22 @@ export default function StudentsPage() {
     }
   };
 
-  const totalPages = Math.ceil(totalCount / limit);
+  const columns: DataGridColumn<StudentRow>[] = [
+    { key: "admissionNumber", header: "SIS ID", render: (s) => <span className="font-semibold text-primary">{s.admissionNumber}</span> },
+    { key: "fullName", header: "Full Name" },
+    {
+      key: "grade",
+      header: "Grade Cohort",
+      render: (s) => `${s.enrollments?.[0]?.section?.class?.grade || "Unassigned"} ${s.enrollments?.[0]?.section?.name || ""}`,
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (s) => <Badge variant={s.status === "Active" ? "success" : "warning"}>{s.status}</Badge>,
+    },
+  ];
+
+  const filtered = students.filter((s) => s.fullName?.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <>
@@ -52,90 +75,22 @@ export default function StudentsPage() {
       </div>
 
       <Card>
-        <CardHeader>
-          <div className="relative">
-            <span className="absolute left-3 top-3 text-text-secondary">
-              <Search className="h-4 w-4" />
-            </span>
-            <input
-              type="text"
-              placeholder="Filter by name..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-10 pl-9 rounded-btn bg-slate-50 dark:bg-slate-800 border border-border text-xs outline-none focus:ring-2 focus:ring-primary/20 text-text-primary"
-            />
-          </div>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="p-8 text-center text-text-secondary">Loading students...</div>
-          ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>SIS ID</TableHead>
-                    <TableHead>Full Name</TableHead>
-                    <TableHead>Grade Cohort</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {students
-                    .filter((s) => s.fullName?.toLowerCase().includes(search.toLowerCase()))
-                    .map((student) => (
-                      <TableRow
-                        key={student.id}
-                        className="cursor-pointer"
-                        onClick={() => router.push(`/students/${student.id}`)}
-                      >
-                        <TableCell className="font-semibold text-primary">{student.admissionNumber}</TableCell>
-                        <TableCell>{student.fullName}</TableCell>
-                        <TableCell>
-                          {student.enrollments?.[0]?.section?.class?.grade || "Unassigned"}{" "}
-                          {student.enrollments?.[0]?.section?.name || ""}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={student.status === "Active" ? "success" : "warning"}>
-                            {student.status}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  {students.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center p-4">No students found.</TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-              
-              {/* Pagination Controls */}
-              <div className="flex items-center justify-between mt-4 border-t pt-4">
-                <div className="text-sm text-text-secondary">
-                  Showing {Math.min((page - 1) * limit + 1, totalCount)} to {Math.min(page * limit, totalCount)} of {totalCount}
-                </div>
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    disabled={page === 1} 
-                    onClick={() => setPage(page - 1)}
-                  >
-                    <ChevronLeft className="h-4 w-4 mr-1" /> Prev
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    disabled={page >= totalPages} 
-                    onClick={() => setPage(page + 1)}
-                  >
-                    Next <ChevronRight className="h-4 w-4 ml-1" />
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
+        <CardContent className="pt-6">
+          <DataGrid
+            columns={columns}
+            rows={filtered}
+            rowKey={(s) => s.id}
+            loading={loading}
+            emptyMessage="No students found."
+            onRowClick={(s) => router.push(`/students/${s.id}`)}
+            searchValue={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Filter by name..."
+            page={page}
+            pageSize={limit}
+            totalCount={totalCount}
+            onPageChange={setPage}
+          />
         </CardContent>
       </Card>
     </>
