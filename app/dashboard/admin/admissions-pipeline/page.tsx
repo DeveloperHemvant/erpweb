@@ -160,7 +160,11 @@ export default function AdmissionsPipelinePage() {
               ))}
             </div>
             {detail.status !== "Converted" && (
-              <p className="text-xs text-text-secondary">To convert to an enrolled student, register them via Student Admissions, then link this inquiry from there.</p>
+              <p className="text-xs text-text-secondary">
+                Once registered via Student Admissions, open{" "}
+                <a href={`/applicants/${detail.id}`} className="text-primary underline">this applicant's full page</a>{" "}
+                and use "Link to Student" to connect the two records.
+              </p>
             )}
 
             <div>

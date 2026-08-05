@@ -14,6 +14,7 @@ interface StudentRow {
   fullName: string;
   status: string;
   enrollments?: { section?: { name?: string; class?: { grade?: string } } }[];
+  house?: { name?: string } | null;
 }
 
 export default function StudentsPage() {
@@ -53,6 +54,7 @@ export default function StudentsPage() {
       header: "Grade Cohort",
       render: (s) => `${s.enrollments?.[0]?.section?.class?.grade || "Unassigned"} ${s.enrollments?.[0]?.section?.name || ""}`,
     },
+    { key: "house", header: "House", render: (s) => s.house?.name || "—" },
     {
       key: "status",
       header: "Status",

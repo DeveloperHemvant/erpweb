@@ -16,11 +16,13 @@ import {
   HelpCircle,
   Bell,
   Search,
+  ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { workspaces, visibleItems } from "./workspace-config";
+import { Button } from "@/components/ui/button";
+import { workspaces, visibleItems, getRequiredModuleForPath } from "./workspace-config";
 import { Omnibox, type OmniboxGroup } from "@/components/shared/Omnibox";
 
 import { hasModuleAccess, getUserFromStorage } from "@/lib/auth";
@@ -55,6 +57,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     setUserProfile(getUserFromStorage());
     setMounted(true);
   }, []);
+
+  // Page-level access guard — mirrors the sidebar's own visibility filter so a
+  // page hidden from the sidebar can't still be opened by direct URL.
+  const requiredModule = getRequiredModuleForPath(pathname);
+  const isAccessDenied = mounted && !!requiredModule && !hasModuleAccess(requiredModule);
 
   useEffect(() => {
     const stored = localStorage.getItem("activeCampus");
@@ -171,6 +178,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const omniboxGroups: OmniboxGroup[] = recordsGroup.items.length > 0 ? [recordsGroup, ...navigateGroups] : navigateGroups;
 
   const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("activeCampus");
+    localStorage.removeItem("activeCampusId");
     toast("Logged out successfully", { description: "Redirecting to landing page...", type: "success" });
     setTimeout(() => {
       router.push("/");
@@ -385,7 +396,24 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
         {/* Content Body */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-7 space-y-5 bg-background">
-          {children}
+          {isAccessDenied ? (
+            <div className="flex flex-col items-center justify-center text-center py-24 gap-4">
+              <div className="w-14 h-14 rounded-full bg-danger/10 flex items-center justify-center">
+                <ShieldAlert className="h-7 w-7 text-danger" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-text-primary">Access Denied</h2>
+                <p className="text-sm text-text-secondary mt-1 max-w-sm">
+                  You don&apos;t have permission to view this page. If you believe this is a mistake, contact your administrator.
+                </p>
+              </div>
+              <Button variant="primary" size="sm" onClick={() => router.push("/dashboard")}>
+                Back to Dashboard
+              </Button>
+            </div>
+          ) : (
+            children
+          )}
         </main>
       </div>
 

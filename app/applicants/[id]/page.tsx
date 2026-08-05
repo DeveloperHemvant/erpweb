@@ -13,6 +13,10 @@ import { useComments } from "@/hooks/useComments";
 import { useAttachments } from "@/hooks/useAttachments";
 import { getUserFromStorage } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
+import { SearchSelect, SearchSelectOption } from "@/components/ui/search-select";
+import { useToast } from "@/components/ui/toast";
+import { ArrowUpRight } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -43,11 +47,15 @@ export default function ApplicantEntityPage() {
   const comments = useComments("applicant", id);
   const attachments = useAttachments("applicant", id);
   const currentUser = getUserFromStorage();
+  const { toast } = useToast();
 
-  useEffect(() => {
-    if (!id) return;
+  const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
+  const [convertStudent, setConvertStudent] = useState<SearchSelectOption | null>(null);
+  const [converting, setConverting] = useState(false);
+
+  const fetchInquiry = () => {
     setLoading(true);
-    fetch(`${API_URL}/admission-inquiries/${id}`, { headers: authHeaders() })
+    return fetch(`${API_URL}/admission-inquiries/${id}`, { headers: authHeaders() })
       .then((res) => {
         if (!res.ok) throw new Error(String(res.status));
         return res.json();
@@ -55,7 +63,38 @@ export default function ApplicantEntityPage() {
       .then(setInquiry)
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    if (!id) return;
+    fetchInquiry();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  const handleConvert = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!convertStudent) return;
+    setConverting(true);
+    try {
+      const res = await fetch(`${API_URL}/admission-inquiries/${id}/convert`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ studentId: convertStudent.id }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Failed to link student");
+      }
+      toast("Linked to student record", { type: "success" });
+      setIsConvertModalOpen(false);
+      setConvertStudent(null);
+      fetchInquiry();
+    } catch (err: any) {
+      toast(err.message || "Failed to link student", { type: "error" });
+    } finally {
+      setConverting(false);
+    }
+  };
 
   if (loading) return <div className="p-10 text-center text-text-secondary">Loading applicant...</div>;
   if (notFound || !inquiry) {
@@ -69,23 +108,37 @@ export default function ApplicantEntityPage() {
     );
   }
 
-  // admission-inquiry.service.ts::getById's exact shape wasn't fully confirmed —
-  // follow-ups are read defensively; if absent, the Communication tab honestly
-  // falls back to the gap-state message below.
-  const followups = inquiry.followups ?? inquiry.followUps ?? [];
+  const followups = inquiry.followUps ?? [];
 
   return (
+    <>
     <EntityPageShell
       header={{
-        breadcrumb: [{ label: "Admissions Pipeline", href: "/dashboard/admin/admissions-pipeline" }, { label: inquiry.studentName ?? inquiry.fullName ?? "Applicant" }],
-        title: inquiry.studentName ?? inquiry.fullName ?? "Applicant",
-        subtitle: inquiry.classApplied ? `Applying for ${inquiry.classApplied}` : undefined,
+        breadcrumb: [{ label: "Admissions Pipeline", href: "/dashboard/admin/admissions-pipeline" }, { label: inquiry.childName ?? "Applicant" }],
+        title: inquiry.childName ?? "Applicant",
+        subtitle: inquiry.gradeInterested ? `Applying for ${inquiry.gradeInterested}` : undefined,
         status: inquiry.status ? inquiry.status.toLowerCase() : "pending",
         meta: [
           inquiry.phone ? { label: "Phone", value: inquiry.phone } : null,
           inquiry.email ? { label: "Email", value: inquiry.email } : null,
+          inquiry.source ? { label: "Source", value: inquiry.source } : null,
         ].filter(Boolean) as any,
-        actions: <ActionMenu items={buildStandardActions({ isFavorite: favorite.isFavorite, onToggleFavorite: favorite.toggle })} />,
+        actions: (
+          <div className="flex items-center gap-2">
+            {inquiry.convertedStudentId ? (
+              <a href={`/students/${inquiry.convertedStudentId}`}>
+                <Button variant="outline" size="sm" rightIcon={<ArrowUpRight className="h-3.5 w-3.5" />}>
+                  View Student{inquiry.convertedStudent?.fullName ? `: ${inquiry.convertedStudent.fullName}` : ""}
+                </Button>
+              </a>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => setIsConvertModalOpen(true)}>
+                Link to Student
+              </Button>
+            )}
+            <ActionMenu items={buildStandardActions({ isFavorite: favorite.isFavorite, onToggleFavorite: favorite.toggle })} />
+          </div>
+        ),
       }}
       tabs={TABS}
       activeTab={activeTab}
@@ -95,12 +148,14 @@ export default function ApplicantEntityPage() {
       {activeTab === "application" && (
         <div className="grid sm:grid-cols-2 gap-x-6 gap-y-2 border border-border rounded-[14px] p-4">
           {[
-            ["Applicant Name", inquiry.studentName ?? inquiry.fullName],
-            ["Class Applied", inquiry.classApplied],
-            ["Parent / Guardian", inquiry.guardianName ?? inquiry.parentName],
+            ["Applicant Name", inquiry.childName],
+            ["Grade Interested", inquiry.gradeInterested],
+            ["Parent / Guardian", inquiry.parentName],
             ["Phone", inquiry.phone],
             ["Email", inquiry.email],
-            ["Source", inquiry.sourceOfInfo],
+            ["Source", inquiry.source],
+            ["Assigned To", inquiry.assignedToStaff?.fullName],
+            ["Notes", inquiry.notes],
           ]
             .filter(([, v]) => v)
             .map(([label, value]) => (
@@ -136,8 +191,10 @@ export default function ApplicantEntityPage() {
           <ul className="divide-y divide-border border border-border rounded-[14px] overflow-hidden">
             {followups.map((f: any) => (
               <li key={f.id} className="px-3.5 py-2.5">
-                <p className="text-sm text-text-primary">{f.note ?? f.remarks ?? "Follow-up"}</p>
-                <p className="text-xs text-text-secondary mt-0.5">{f.date ? new Date(f.date).toLocaleDateString() : ""}</p>
+                <p className="text-sm text-text-primary">{f.note}</p>
+                <p className="text-xs text-text-secondary mt-0.5">
+                  {f.followUpDate ? new Date(f.followUpDate).toLocaleDateString() : ""}{f.createdByStaff?.fullName ? ` · ${f.createdByStaff.fullName}` : ""}
+                </p>
               </li>
             ))}
           </ul>
@@ -163,5 +220,27 @@ export default function ApplicantEntityPage() {
         <Timeline items={timeline.items} loading={timeline.loading} emptyMessage="No audit-log activity recorded for this applicant yet." />
       )}
     </EntityPageShell>
+
+    <Modal isOpen={isConvertModalOpen} onClose={() => setIsConvertModalOpen(false)} title="Link to Student Record">
+      <form className="space-y-4 pt-4" onSubmit={handleConvert}>
+        <p className="text-sm text-text-secondary">
+          If this applicant has already been admitted and registered as a student (via Student Admissions), search for and select that record to permanently link the two — this marks the inquiry Converted and lets both records cross-navigate to each other.
+        </p>
+        <SearchSelect
+          label="Student"
+          entityType="student"
+          placeholder="Search by name or admission no..."
+          value={convertStudent}
+          onChange={setConvertStudent}
+        />
+        <div className="flex justify-end gap-2 pt-4">
+          <Button type="button" variant="outline" onClick={() => setIsConvertModalOpen(false)}>Cancel</Button>
+          <Button type="submit" variant="primary" disabled={!convertStudent || converting}>
+            {converting ? "Linking..." : "Link Student"}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+    </>
   );
 }

@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
-import { Megaphone, Calendar } from "lucide-react";
+import { FileUpload } from "@/components/ui/file-upload";
+import { Megaphone, Calendar, Trash2 } from "lucide-react";
 
 export default function AnnouncementsPage() {
   const { toast } = useToast();
@@ -18,6 +19,9 @@ export default function AnnouncementsPage() {
   const [body, setBody] = useState("");
   const [targetAudience, setTargetAudience] = useState("ALL");
   const [eventDate, setEventDate] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [uploadKey, setUploadKey] = useState(0);
+  const [posting, setPosting] = useState(false);
 
   useEffect(() => {
     fetchAnnouncements();
@@ -34,6 +38,7 @@ export default function AnnouncementsPage() {
 
   const handlePost = async (e: React.FormEvent) => {
     e.preventDefault();
+    setPosting(true);
     try {
       const res = await fetch(`${API_URL}/communication/announcements`, {
         method: "POST",
@@ -41,14 +46,35 @@ export default function AnnouncementsPage() {
         body: JSON.stringify({ title, body, targetAudience, eventDate })
       });
       if (res.ok) {
+        const saved = await res.json();
+        if (imageFile) {
+          const fd = new FormData();
+          fd.append("file", imageFile);
+          const imgRes = await fetch(`${API_URL}/communication/announcements/${saved.id}/image`, { method: "POST", body: fd });
+          if (!imgRes.ok) toast("Posted, but the image upload failed.", { type: "error" });
+        }
         toast("Announcement posted!", { type: "success" });
-        setTitle(""); setBody(""); setEventDate("");
+        setTitle(""); setBody(""); setEventDate(""); setImageFile(null); setUploadKey(k => k + 1);
         fetchAnnouncements();
       } else {
         toast("Failed to post", { type: "error" });
       }
     } catch {
       toast("Error posting announcement", { type: "error" });
+    } finally {
+      setPosting(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this announcement? This cannot be undone.")) return;
+    try {
+      const res = await fetch(`${API_URL}/communication/announcements/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      toast("Announcement deleted", { type: "success" });
+      fetchAnnouncements();
+    } catch {
+      toast("Failed to delete announcement", { type: "error" });
     }
   };
 
@@ -94,13 +120,21 @@ export default function AnnouncementsPage() {
                   { label: "Students Only", value: "STUDENTS" }
                 ]}
               />
-              <Input 
-                label="Event Date (Optional)" 
-                type="date" 
-                value={eventDate} 
-                onChange={e => setEventDate(e.target.value)} 
+              <Input
+                label="Event Date (Optional)"
+                type="date"
+                value={eventDate}
+                onChange={e => setEventDate(e.target.value)}
               />
-              <Button type="submit" variant="primary" className="w-full">Post Announcement</Button>
+              <FileUpload
+                key={uploadKey}
+                label="Banner Image (optional)"
+                accept="image/png,image/jpeg,image/webp"
+                onFileSelect={setImageFile}
+              />
+              <Button type="submit" variant="primary" className="w-full" disabled={posting}>
+                {posting ? "Posting..." : "Post Announcement"}
+              </Button>
             </form>
           </CardContent>
         </Card>
@@ -113,11 +147,23 @@ export default function AnnouncementsPage() {
             <div className="space-y-4">
               {announcements.map((ann, i) => (
                 <div key={i} className="p-4 border rounded-xl bg-slate-50 dark:bg-slate-800">
+                  {ann.imageUrl && (
+                    <img
+                      src={`${API_URL}${ann.imageUrl}`}
+                      alt={ann.title}
+                      className="w-full h-32 object-cover rounded-lg mb-3 border border-border"
+                    />
+                  )}
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="font-bold text-lg">{ann.title}</h3>
-                    <span className="text-xs text-text-secondary bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded">
-                      Audience: {ann.targetAudience}
-                    </span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-xs text-text-secondary bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded">
+                        Audience: {ann.targetAudience}
+                      </span>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-danger" onClick={() => handleDelete(ann.id)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                   <p className="text-sm text-text-secondary mb-3">{ann.body}</p>
                   <div className="flex gap-4 text-xs font-semibold">

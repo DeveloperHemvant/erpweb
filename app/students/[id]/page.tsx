@@ -13,7 +13,10 @@ import { CommentThread } from "@/components/shared/CommentThread";
 import { useComments } from "@/hooks/useComments";
 import { getUserFromStorage } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
-import { ArrowUpRight } from "lucide-react";
+import { Modal } from "@/components/ui/modal";
+import { Select } from "@/components/ui/select";
+import { useToast } from "@/components/ui/toast";
+import { ArrowUpRight, Home } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const ERP_API_URL = `${API_URL}/erp-core`;
@@ -71,11 +74,15 @@ export default function StudentEntityPage() {
   const favorite = useFavorite("student", id);
   const comments = useComments("student", id);
   const currentUser = getUserFromStorage();
+  const { toast } = useToast();
 
-  useEffect(() => {
-    if (!id) return;
+  const [houses, setHouses] = useState<any[]>([]);
+  const [isHouseModalOpen, setIsHouseModalOpen] = useState(false);
+  const [savingHouse, setSavingHouse] = useState(false);
+
+  const fetchProfile = () => {
     setLoading(true);
-    fetch(`${ERP_API_URL}/students/${id}/profile`, { headers: authHeaders() })
+    return fetch(`${ERP_API_URL}/students/${id}/profile`, { headers: authHeaders() })
       .then((res) => {
         if (!res.ok) throw new Error(String(res.status));
         return res.json();
@@ -83,7 +90,38 @@ export default function StudentEntityPage() {
       .then(setProfile)
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    if (!id) return;
+    fetchProfile();
+    fetch(`${API_URL}/activities/houses/standings`, { headers: authHeaders() })
+      .then((res) => (res.ok ? res.json() : []))
+      .then(setHouses)
+      .catch(() => setHouses([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  const handleChangeHouse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const form = e.target as any;
+    setSavingHouse(true);
+    try {
+      const res = await fetch(`${ERP_API_URL}/students/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ houseId: form.houseId.value || undefined }),
+      });
+      if (!res.ok) throw new Error("Failed to update house");
+      toast("House updated", { type: "success" });
+      setIsHouseModalOpen(false);
+      fetchProfile();
+    } catch {
+      toast("Failed to update house", { type: "error" });
+    } finally {
+      setSavingHouse(false);
+    }
+  };
 
   const activeEnrollment = useMemo(() => {
     if (!profile?.enrollments) return null;
@@ -146,6 +184,7 @@ export default function StudentEntityPage() {
   const sectionName = activeEnrollment?.section?.name;
 
   return (
+    <>
     <EntityPageShell
       header={{
         breadcrumb: [
@@ -160,14 +199,24 @@ export default function StudentEntityPage() {
         meta: [
           className ? { label: "Class", value: sectionName ? `${className} · ${sectionName}` : className } : null,
           activeEnrollment?.rollNumber ? { label: "Roll No.", value: activeEnrollment.rollNumber } : null,
+          profile.house?.name ? { label: "House", value: profile.house.name } : null,
           profile.gender ? { label: "Gender", value: profile.gender } : null,
           profile.phone ? { label: "Phone", value: profile.phone } : null,
         ].filter(Boolean) as any,
         actions: (
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/admin/admissions`)}>
-              Admissions
+            <Button variant="outline" size="sm" leftIcon={<Home className="h-3.5 w-3.5" />} onClick={() => setIsHouseModalOpen(true)}>
+              House
             </Button>
+            {profile.admissionInquiry ? (
+              <Button variant="outline" size="sm" onClick={() => router.push(`/applicants/${profile.admissionInquiry.id}`)}>
+                View Application
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/admin/admissions`)}>
+                Admissions
+              </Button>
+            )}
             <ActionMenu items={buildStandardActions({ isFavorite: favorite.isFavorite, onToggleFavorite: favorite.toggle })} />
           </div>
         ),
@@ -378,5 +427,22 @@ export default function StudentEntityPage() {
         <Timeline items={timeline.items} loading={timeline.loading} emptyMessage="No audit-log activity recorded for this student yet." />
       )}
     </EntityPageShell>
+
+    <Modal isOpen={isHouseModalOpen} onClose={() => setIsHouseModalOpen(false)} title="Assign House">
+      <form className="space-y-4 pt-4" onSubmit={handleChangeHouse}>
+        <Select
+          label="House"
+          name="houseId"
+          defaultValue={profile.house?.id || ""}
+          options={houses.map((h: any) => ({ label: h.name, value: h.id }))}
+          required
+        />
+        <div className="flex justify-end gap-2 pt-4">
+          <Button type="button" variant="outline" onClick={() => setIsHouseModalOpen(false)}>Cancel</Button>
+          <Button type="submit" variant="primary" disabled={savingHouse}>{savingHouse ? "Saving..." : "Save"}</Button>
+        </div>
+      </form>
+    </Modal>
+    </>
   );
 }

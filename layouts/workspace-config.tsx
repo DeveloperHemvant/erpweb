@@ -85,6 +85,7 @@ export const workspaces: Workspace[] = [
       { name: "LMS Course Desk", href: "/dashboard/admin/lms", icon: <BookOpen className="h-4 w-4" />, reqModule: "reportcards" },
       { name: "Exams Desk (EMS)", href: "/dashboard/admin/exams", icon: <FileText className="h-4 w-4" />, reqModule: "reportcards" },
       { name: "Report Cards", href: "/dashboard/admin/report-cards", icon: <FileText className="h-4 w-4" />, reqModule: "reportcards" },
+      { name: "Co-Curricular & Activities", href: "/dashboard/admin/activities", icon: <Activity className="h-4 w-4" />, reqModule: "masterdata" },
     ],
   },
   {
@@ -137,4 +138,27 @@ export const workspaces: Workspace[] = [
 /** Centralizes the permission-filter that used to be duplicated 4x in the sidebar render. */
 export function visibleItems(items: SidebarItem[], mounted: boolean, hasModuleAccess: (m: string) => boolean): SidebarItem[] {
   return items.filter((item) => !item.reqModule || (mounted && hasModuleAccess(item.reqModule)));
+}
+
+/**
+ * Reverse lookup: which reqModule (if any) does a given /dashboard/* pathname need.
+ * Longest-href-prefix wins, so a dynamic child route (e.g. .../admissions/[id]) inherits
+ * its parent list page's requirement. Routes not present in this nav config (e.g. the
+ * Command Center root, or an orphan page) return undefined — deliberately NOT gated here,
+ * since guessing a requirement for an unlisted route risks locking out a legitimate page.
+ */
+export function getRequiredModuleForPath(pathname: string): string | undefined {
+  let bestHref = "";
+  let bestModule: string | undefined;
+  for (const ws of workspaces) {
+    for (const item of ws.items) {
+      if (!item.reqModule) continue;
+      const matches = pathname === item.href || pathname.startsWith(item.href + "/");
+      if (matches && item.href.length > bestHref.length) {
+        bestHref = item.href;
+        bestModule = item.reqModule;
+      }
+    }
+  }
+  return bestModule;
 }
