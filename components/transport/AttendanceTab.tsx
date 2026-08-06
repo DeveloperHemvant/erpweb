@@ -91,7 +91,7 @@ export function AttendanceTab({ trips, apiUrl, authHeaders }: AttendanceTabProps
           ) : loading ? (
             <div className="py-8 text-center text-sm text-text-secondary">Loading roster...</div>
           ) : roster.length === 0 ? (
-            <div className="py-8 text-center text-sm text-text-secondary">No students assigned to this trip's route.</div>
+            <div className="py-8 text-center text-sm text-text-secondary">No students assigned to this trip&apos;s route.</div>
           ) : (
             <Table>
               <TableHeader>

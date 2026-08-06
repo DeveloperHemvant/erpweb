@@ -1,11 +1,9 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 
 export function FetchInterceptorProvider({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const { toast } = useToast();
 
   useEffect(() => {

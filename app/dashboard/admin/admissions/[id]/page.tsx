@@ -9,7 +9,7 @@ import { useToast } from "@/components/ui/toast";
 import { Tabs } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { ArrowLeft, User, Phone, MapPin, Briefcase, FileText, Upload, Printer, Download, BookOpen, Clock, Activity, Bus } from "lucide-react";
+import { ArrowLeft, User, Phone, MapPin, Upload, Printer, Download, BookOpen, Activity, Bus } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
 
 export default function StudentProfilePage() {
@@ -111,7 +111,7 @@ export default function StudentProfilePage() {
         const data = await res.json();
         setRenderedIdCard(data);
       }
-    } catch (e) {
+    } catch {
       console.error("Failed to load ID card");
     }
   };
@@ -352,14 +352,14 @@ export default function StudentProfilePage() {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded border space-y-3">
-                    <h4 className="font-semibold text-sm border-b pb-1 text-primary">Father's Details</h4>
+                    <h4 className="font-semibold text-sm border-b pb-1 text-primary">Father&apos;s Details</h4>
                     <p className="text-sm"><span className="text-text-secondary">Name:</span> {student.details?.fatherName || student.guardianName}</p>
                     <p className="text-sm"><span className="text-text-secondary">Contact:</span> {student.details?.fatherContact || student.phone}</p>
                     <p className="text-sm"><span className="text-text-secondary">Profession:</span> {student.details?.fatherProfession || "N/A"}</p>
                     <p className="text-sm"><span className="text-text-secondary">Company:</span> {student.details?.fatherCompany || "N/A"}</p>
                   </div>
                   <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded border space-y-3">
-                    <h4 className="font-semibold text-sm border-b pb-1 text-primary">Mother's Details</h4>
+                    <h4 className="font-semibold text-sm border-b pb-1 text-primary">Mother&apos;s Details</h4>
                     <p className="text-sm"><span className="text-text-secondary">Name:</span> {student.details?.motherName || "N/A"}</p>
                     <p className="text-sm"><span className="text-text-secondary">Contact:</span> {student.details?.motherContact || "N/A"}</p>
                     <p className="text-sm"><span className="text-text-secondary">Profession:</span> {student.details?.motherProfession || "N/A"}</p>
@@ -483,7 +483,7 @@ export default function StudentProfilePage() {
 
                   {/* Father Photo */}
                   <div className="border rounded p-4 flex flex-col items-center gap-3">
-                    <p className="text-sm font-semibold">Father's Photo</p>
+                    <p className="text-sm font-semibold">Father&apos;s Photo</p>
                     <div className="w-24 h-24 bg-slate-100 rounded-full overflow-hidden flex items-center justify-center">
                       {(isEditing ? editData.details?.fatherPhotoUrl : student.details?.fatherPhotoUrl) ? (
                         <img src={isEditing ? editData.details?.fatherPhotoUrl : student.details?.fatherPhotoUrl} alt="Father" className="w-full h-full object-cover" />
@@ -501,7 +501,7 @@ export default function StudentProfilePage() {
 
                   {/* Mother Photo */}
                   <div className="border rounded p-4 flex flex-col items-center gap-3">
-                    <p className="text-sm font-semibold">Mother's Photo</p>
+                    <p className="text-sm font-semibold">Mother&apos;s Photo</p>
                     <div className="w-24 h-24 bg-slate-100 rounded-full overflow-hidden flex items-center justify-center">
                       {(isEditing ? editData.details?.motherPhotoUrl : student.details?.motherPhotoUrl) ? (
                         <img src={isEditing ? editData.details?.motherPhotoUrl : student.details?.motherPhotoUrl} alt="Mother" className="w-full h-full object-cover" />
@@ -526,7 +526,7 @@ export default function StudentProfilePage() {
             <Card>
               <CardHeader>
                 <CardTitle>Transport & Route Allocation</CardTitle>
-                <CardDescription>Assign or update this student's transport route. A student can only have one active route at a time. Assigning a new route will automatically archive the previous one.</CardDescription>
+                <CardDescription>Assign or update this student&apos;s transport route. A student can only have one active route at a time. Assigning a new route will automatically archive the previous one.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 

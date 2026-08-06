@@ -50,7 +50,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-  const ERP_API_URL = `${API_URL}/erp-core`;
   const MASTER_DATA_API_URL = `${API_URL}/master-data`;
 
   useEffect(() => {

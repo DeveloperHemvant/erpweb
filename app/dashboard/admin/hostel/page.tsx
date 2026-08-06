@@ -77,7 +77,7 @@ export default function HostelAdminPage() {
       setStudents(studentsRes?.data || []);
       setAllocations(allocationsData || []);
       setGrievances(grievancesData || []);
-    } catch (error) {
+    } catch {
       toast("Error", { description: "Failed to load hostel management data.", type: "error" });
     } finally {
       setLoading(false);

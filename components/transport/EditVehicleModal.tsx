@@ -71,7 +71,7 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, apiUrl, authHeaders
       {vehicle && (
         <form onSubmit={handleSave} className="space-y-4 pt-2">
           <p className="text-xs text-text-secondary">
-            Expiry dates drive the fleet's Safety Compliance figure on the Overview tab — leave blank if a document doesn't apply yet.
+            Expiry dates drive the fleet&apos;s Safety Compliance figure on the Overview tab — leave blank if a document doesn&apos;t apply yet.
           </p>
           <div className="grid grid-cols-2 gap-4">
             <Input label="Insurance Expiry" type="date" value={form.insuranceExpiry} onChange={(e) => setForm({ ...form, insuranceExpiry: e.target.value })} />

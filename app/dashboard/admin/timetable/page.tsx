@@ -1,28 +1,22 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import {
-  Calendar,
   Plus,
   Trash2,
   Edit2,
   Wand2,
   Clock,
   User,
-  BookOpen,
-  ArrowRight,
   Loader2,
-  CheckCircle,
   UserSearch,
-  X
 } from "lucide-react";
 
 interface PeriodSlot {
@@ -451,7 +445,7 @@ export default function TimetablePage() {
       } else {
         toast("Generation Failed", { description: "Failed to generate timetable.", type: "error" });
       }
-    } catch (e) {
+    } catch {
       toast("Error", { type: "error" });
     }
     setGenProgress(100);

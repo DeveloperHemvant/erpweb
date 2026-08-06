@@ -149,7 +149,7 @@ function StudentDashboardContent() {
         {/* Timetable */}
         <Card className="md:col-span-2">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Clock className="w-5 h-5 text-primary"/> Today's Timetable</CardTitle>
+            <CardTitle className="flex items-center gap-2"><Clock className="w-5 h-5 text-primary"/> Today&apos;s Timetable</CardTitle>
           </CardHeader>
           <CardContent>
             {timetable && timetable.length > 0 ? (

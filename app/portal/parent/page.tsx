@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
-import { Clock, Calendar, CheckCircle2, AlertCircle, FileText, Wallet, BookOpen, MapPin, Home } from "lucide-react";
+import { Clock, Calendar, CheckCircle2, FileText, Wallet, BookOpen, MapPin, Home } from "lucide-react";
 
 export default function ParentDashboard() {
   return (
@@ -91,7 +91,7 @@ function ParentDashboardContent() {
   if (!children || children.length === 0) return <div className="p-8 text-center">No linked children found.</div>;
 
   const childData = children[activeChildIdx];
-  const { student, enrollment, attendanceRate, upcomingExams, timetable, reportCards, pendingInvoices } = childData;
+  const { attendanceRate, upcomingExams, timetable, reportCards, pendingInvoices } = childData;
 
   // No online payment gateway (Stripe/Razorpay) is configured for this deployment, so
   // "Pay Now" records a payment the parent already made externally (UPI/bank transfer/cheque)
@@ -249,7 +249,7 @@ function ParentDashboardContent() {
         {/* Timetable */}
         <Card className="md:col-span-2">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Clock className="w-5 h-5 text-primary"/> Today's Timetable</CardTitle>
+            <CardTitle className="flex items-center gap-2"><Clock className="w-5 h-5 text-primary"/> Today&apos;s Timetable</CardTitle>
           </CardHeader>
           <CardContent>
             {timetable && timetable.length > 0 ? (
@@ -468,7 +468,7 @@ function ParentDashboardContent() {
           </div>
         ) : (
           <p className="text-text-secondary text-sm py-6 text-center">
-            No live GPS ping has been received for this route's bus yet. Tracking data appears here once the driver's trip is underway.
+            No live GPS ping has been received for this route&apos;s bus yet. Tracking data appears here once the driver&apos;s trip is underway.
           </p>
         )}
       </Modal>
@@ -498,7 +498,7 @@ function ParentDashboardContent() {
       <Modal isOpen={showPayModal} onClose={() => setShowPayModal(false)} title="Record Fee Payment" size="md">
         <div className="space-y-4">
           <p className="text-sm text-text-secondary">
-            Online card/UPI checkout isn't connected for this school yet. Pay via UPI, NetBanking, or Cheque outside the
+            Online card/UPI checkout isn&apos;t connected for this school yet. Pay via UPI, NetBanking, or Cheque outside the
             app, then record the transaction here so the front office can confirm it against the invoice.
           </p>
           <div className="text-sm">

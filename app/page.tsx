@@ -6,11 +6,6 @@ import { PublicLayout } from "@/layouts/public-layout";
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
-  Shield,
-  Zap,
-  Globe,
-  CheckCircle,
-  FileSpreadsheet,
   ArrowRight,
   TrendingUp,
   UserCheck

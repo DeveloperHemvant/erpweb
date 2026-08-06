@@ -13,7 +13,7 @@ export default function SetupLayout({ children }: { children: React.ReactNode })
           School ERP Setup
         </h2>
         <p className="mt-2 text-center text-sm text-slate-600">
-          Welcome to your new School ERP. Let's get things configured!
+          Welcome to your new School ERP. Let&apos;s get things configured!
         </p>
       </div>
 

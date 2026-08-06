@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
-import { Server, Cpu, Database, Activity, MemoryStick, Clock, ListChecks } from "lucide-react";
+import { Cpu, Database, Activity, MemoryStick, Clock, ListChecks } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 
 export default function SystemMonitoringPage() {

@@ -12,11 +12,8 @@ import {
   Mail,
   UserCheck,
   Lock,
-  Unlock,
   AlertTriangle,
   RotateCcw,
-  CheckCircle,
-  HelpCircle
 } from "lucide-react";
 
 type AuthState =
@@ -67,7 +64,7 @@ export default function LoginPage() {
         toast("Credentials Approved", { description: `Welcome back, ${data.user.fullName}!`, type: "success" });
         // Force a hard navigation to reload layout with the new token so the interceptor picks it up
         window.location.href = "/dashboard";
-      } catch (err) {
+      } catch {
         setIsSubmitting(false);
         toast("Connection Refused", { description: "Make sure the NestJS backend engine is running on port 8000.", type: "error" });
       }

@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
@@ -30,7 +29,7 @@ export default function ReportCardsPage() {
   
   // Certificate state
   const [certificateData, setCertificateData] = useState<any>(null);
-  const [certificateType, setCertificateType] = useState<"bonafide"|"transfer">("bonafide");
+  const [, setCertificateType] = useState<"bonafide"|"transfer">("bonafide");
   const [isCertOpen, setIsCertOpen] = useState(false);
 
   useEffect(() => {

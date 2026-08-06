@@ -11,7 +11,6 @@ import {
   GraduationCap,
   Calendar,
   Wallet,
-  Clock,
   ArrowRight,
   FileCheck2,
   AlertCircle,

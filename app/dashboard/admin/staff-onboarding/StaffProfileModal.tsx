@@ -24,8 +24,7 @@ export function StaffProfileModal({ isOpen, onClose, staffId, API_URL, onUpdated
   const [isUpdatingCredentials, setIsUpdatingCredentials] = useState(false);
 
   // For ID Cards
-  const [templates, setTemplates] = useState<any[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [selectedTemplateId] = useState("");
   const [renderedIdCard, setRenderedIdCard] = useState<any>(null);
 
   useEffect(() => {
@@ -42,7 +41,7 @@ export function StaffProfileModal({ isOpen, onClose, staffId, API_URL, onUpdated
       if (res.ok) {
         setStaff(await res.json());
       }
-    } catch (e) {
+    } catch {
       toast("Error", { description: "Could not load profile", type: "error" });
     }
     setLoading(false);
@@ -78,7 +77,7 @@ export function StaffProfileModal({ isOpen, onClose, staffId, API_URL, onUpdated
         toast("Unauthorized", { description: "Please login again.", type: "error" });
         window.location.href = "/login";
       }
-    } catch (e) {
+    } catch {
       toast("Error", { description: "Failed to update profile", type: "error" });
     }
   };
@@ -106,7 +105,7 @@ export function StaffProfileModal({ isOpen, onClose, staffId, API_URL, onUpdated
       } else {
         toast("Error", { description: "Failed to update credentials", type: "error" });
       }
-    } catch (e) {
+    } catch {
       toast("Error", { description: "Network error", type: "error" });
     } finally {
       setIsUpdatingCredentials(false);
@@ -134,7 +133,7 @@ export function StaffProfileModal({ isOpen, onClose, staffId, API_URL, onUpdated
         fetchStaff();
         onUpdated();
       }
-    } catch (e) {
+    } catch {
       toast("Error", { description: "Failed to upload photo", type: "error" });
     }
   };
@@ -146,7 +145,7 @@ export function StaffProfileModal({ isOpen, onClose, staffId, API_URL, onUpdated
       if (res.ok) {
         setRenderedIdCard(await res.json());
       }
-    } catch (e) {
+    } catch {
       toast("Error", { description: "Failed to render ID card", type: "error" });
     }
   };
@@ -197,7 +196,7 @@ export function StaffProfileModal({ isOpen, onClose, staffId, API_URL, onUpdated
             <div className="space-y-6">
               <div className="border-b pb-3">
                 <h4 className="text-lg font-semibold text-primary">Basic Information</h4>
-                <p className="text-sm text-text-secondary">Update the staff member's core HR details and demographic data.</p>
+                <p className="text-sm text-text-secondary">Update the staff member&apos;s core HR details and demographic data.</p>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -237,7 +236,7 @@ export function StaffProfileModal({ isOpen, onClose, staffId, API_URL, onUpdated
                 <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded border space-y-4">
                   <div>
                     <p className="text-sm font-semibold mb-1">Current Email: <span className="font-normal text-text-secondary">{staff.email}</span></p>
-                    <p className="text-xs text-text-secondary">Updating credentials will instantly modify the staff member's login access.</p>
+                    <p className="text-xs text-text-secondary">Updating credentials will instantly modify the staff member&apos;s login access.</p>
                   </div>
                   <div className="flex gap-4 items-end">
                     <div className="flex-1">

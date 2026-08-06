@@ -10,7 +10,8 @@ export interface RadioProps extends Omit<React.InputHTMLAttributes<HTMLInputElem
 
 export const Radio = forwardRef<HTMLInputElement, RadioProps>(
   ({ className, label, error, id, ...props }, ref) => {
-    const radioId = id || React.useId();
+    const generatedId = React.useId();
+    const radioId = id || generatedId;
     return (
       <div className="flex flex-col">
         <label htmlFor={radioId} className="inline-flex items-center gap-2.5 cursor-pointer select-none">

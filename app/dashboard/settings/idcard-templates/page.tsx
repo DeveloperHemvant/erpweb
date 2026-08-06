@@ -173,7 +173,7 @@ export default function IdCardTemplatesPage() {
           ))}
           {templates.length === 0 && (
             <div className="col-span-3 text-center py-12 text-text-secondary">
-              No templates found. Click 'Create Template' to get started.
+              No templates found. Click &apos;Create Template&apos; to get started.
             </div>
           )}
         </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { User, Bell, Shield, HelpCircle, HardDrive } from "lucide-react";
+import { User, Bell, Shield, HardDrive } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SettingsTab {
@@ -51,7 +51,7 @@ export function SettingsLayout({ children }: { children: React.ReactNode }) {
       <div className="flex-1 w-full bg-card rounded-card border border-border p-6 md:p-8 shadow-soft">
         {React.Children.map(children, (child) => {
           if (React.isValidElement(child)) {
-            // @ts-ignore
+            // @ts-expect-error - activeTab is injected here for child tab panels, not part of their declared props
             return React.cloneElement(child, { activeTab: activeSubTab });
           }
           return child;

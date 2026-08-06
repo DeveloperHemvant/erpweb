@@ -76,7 +76,7 @@ export default function AcademicCalendarPage() {
   const [campuses, setCampuses] = useState<any[]>([]);
   const [terms, setTerms] = useState<any[]>([]);
   const [holidays, setHolidays] = useState<any[]>([]);
-  const [workingDays, setWorkingDays] = useState<any[]>([]);
+  const [, setWorkingDays] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
 

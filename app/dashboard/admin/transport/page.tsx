@@ -43,7 +43,7 @@ export default function TransportManagementPage() {
   const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
   const [isAddRouteOpen, setIsAddRouteOpen] = useState(false);
   const [isAssignStaffOpen, setIsAssignStaffOpen] = useState(false);
-  const [isAddStopOpen, setIsAddStopOpen] = useState(false);
+  const [, setIsAddStopOpen] = useState(false);
   const [isVehicleProfileOpen, setIsVehicleProfileOpen] = useState(false);
   const [isAddFuelOpen, setIsAddFuelOpen] = useState(false);
   const [isLogServiceOpen, setIsLogServiceOpen] = useState(false);
@@ -76,7 +76,7 @@ export default function TransportManagementPage() {
   }>({ routeName: "", distance: 0, estimatedTime: "", vehicleId: "", stops: [] });
   
   // Selection
-  const [selectedRouteId, setSelectedRouteId] = useState("");
+  const [, setSelectedRouteId] = useState("");
   const [selectedVehicleId, setSelectedVehicleId] = useState("");
   const [assignStaffForm, setAssignStaffForm] = useState({ staffId: "", shift: "Driver - Morning" });
   const [assignStudentForm, setAssignStudentForm] = useState({ enrollmentId: "", stopData: "", morningPickup: true, afternoonDrop: true });
@@ -477,7 +477,7 @@ export default function TransportManagementPage() {
                               setVehicleProfile(await res.json());
                               setIsVehicleProfileOpen(true);
                             }
-                          } catch (e) {
+                          } catch {
                             toast("Error", { description: "Failed to load profile", type: "error" });
                           }
                         }}>View Profile</Button>
@@ -534,7 +534,7 @@ export default function TransportManagementPage() {
                       
                       {/* Visual Stop Timeline */}
                       <div className="relative pl-4 border-l-2 border-primary/30 space-y-4 mt-6 ml-2">
-                        {r.stops?.map((stop: any, idx: number) => (
+                        {r.stops?.map((stop: any) => (
                           <div key={stop.id} className="relative">
                             <div className="absolute w-3 h-3 bg-primary rounded-full -left-[22px] top-1.5 ring-4 ring-white dark:ring-slate-900" />
                             <div className="bg-white dark:bg-slate-800 p-2.5 rounded-md border shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/5">

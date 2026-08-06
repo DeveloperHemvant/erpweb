@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { 
-  BookOpen, Layers, Plus, Search, FileText, Video, Link as LinkIcon, 
-  MoreVertical, Edit, Trash2, CheckCircle, ChevronDown, ChevronRight, Upload
+import {
+  BookOpen, Plus, FileText, Video,
+  Edit, Upload
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -60,7 +60,7 @@ export default function LMSPage() {
         setIsAddCourseOpen(false);
         fetchData();
       }
-    } catch (e) {
+    } catch {
       toast("Error creating course", { type: "error" });
     }
   };
@@ -78,7 +78,7 @@ export default function LMSPage() {
         setIsUploadResourceOpen(false);
         fetchData();
       }
-    } catch (e) {
+    } catch {
       toast("Error uploading resource", { type: "error" });
     }
   };

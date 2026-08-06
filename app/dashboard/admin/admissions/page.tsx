@@ -77,7 +77,6 @@ export default function StudentAdmissionsPage() {
   // Form states
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
-  const [viewingProfileId, setViewingProfileId] = useState<string | null>(null);
 
   // INTAKE FORM FIELDS
   const [admissionNumber, setAdmissionNumber] = useState("");
@@ -544,7 +543,7 @@ export default function StudentAdmissionsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center bg-slate-50 dark:bg-slate-800 p-3 rounded-md border">
               <div>
                 <p className="text-sm font-semibold">Document Verification (KYC)</p>
-                <p className="text-xs text-text-secondary">Have the parent's ID and student birth certificate been physically verified?</p>
+                <p className="text-xs text-text-secondary">Have the parent&apos;s ID and student birth certificate been physically verified?</p>
               </div>
               <div className="flex items-center justify-end">
                 <label className="relative inline-flex items-center cursor-pointer">

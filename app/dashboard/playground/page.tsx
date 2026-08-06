@@ -37,8 +37,6 @@ import {
   ChevronRight,
   Eye,
   Settings,
-  Calendar,
-  AlertTriangle
 } from "lucide-react";
 
 export default function PlaygroundPage() {

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Tabs } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
-import { Package, RefreshCcw, Shield, Store, Toolbox } from "lucide-react";
+import { RefreshCcw, Store, Toolbox } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -15,7 +15,7 @@ export default function InventoryAdminPage() {
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState("assets");
-  const [campusId, setCampusId] = useState<string>("");
+  const [, setCampusId] = useState<string>("");
 
   const [categories, setCategories] = useState<any[]>([]);
   const [assets, setAssets] = useState<any[]>([]);

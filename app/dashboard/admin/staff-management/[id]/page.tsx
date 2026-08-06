@@ -142,7 +142,7 @@ export default function StaffManagementPage() {
       } else {
         toast("Error", { description: "Failed to save assignments.", type: "error" });
       }
-    } catch (e) {
+    } catch {
       toast("Error", { description: "Network error saving assignments.", type: "error" });
     }
   };
@@ -317,7 +317,7 @@ export default function StaffManagementPage() {
                     } else {
                       toast("Error", { description: "Failed to save assignment.", type: "error" });
                     }
-                  } catch (e) {
+                  } catch {
                     toast("Error", { description: "Network error.", type: "error" });
                   }
                 }} 

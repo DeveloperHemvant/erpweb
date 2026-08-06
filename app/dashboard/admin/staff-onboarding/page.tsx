@@ -11,7 +11,7 @@ import { FileUpload } from "@/components/ui/file-upload";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import { Tabs } from "@/components/ui/tabs";
-import { UserPlus, Trash2, Search, Sparkles, UserCircle, Users, ClipboardList, Edit } from "lucide-react";
+import { UserPlus, Trash2, Search, Sparkles, UserCircle, Users, ClipboardList } from "lucide-react";
 import { StaffProfileModal } from "./StaffProfileModal";
 import { useRouter } from "next/navigation";
 
@@ -45,12 +45,12 @@ export default function StaffOnboardingPage() {
   // Mode: "directory" or "wizard"
   const [activeTab, setActiveTab] = useState("directory");
   const [step, setStep] = useState(1);
-  const [autoSaving, setAutoSaving] = useState(false);
+  const [, setAutoSaving] = useState(false);
 
   // Profile Modal State
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
   
-  const [credentialsModal, setCredentialsModal] = useState<{isOpen: boolean, identifier: string, password: string, name: string} | null>(null);
+  const [, setCredentialsModal] = useState<{isOpen: boolean, identifier: string, password: string, name: string} | null>(null);
 
   // Lists from backend
   const [roles, setRoles] = useState<RoleDef[]>([]);
@@ -117,7 +117,7 @@ export default function StaffOnboardingPage() {
           password: Math.random().toString(36).slice(-8) + "Pass123!",
         }));
       }
-    } catch (err) {
+    } catch {
       toast("Metadata Offline", { description: "NestJS APIs offline.", type: "error" });
     }
   };
@@ -133,7 +133,7 @@ export default function StaffOnboardingPage() {
         router.push("/login");
         return;
       }
-    } catch (err) {
+    } catch {
       toast("Error", { description: "Could not retrieve staff roster.", type: "error" });
     } finally {
       setIsLoadingStaff(false);
@@ -291,7 +291,7 @@ export default function StaffOnboardingPage() {
       if (!res.ok) throw new Error();
       toast("Staff Member Removed", { type: "warning" });
       fetchStaffList();
-    } catch (err) {
+    } catch {
       toast("Action Denied", { description: "Cannot remove staff user with active allocations.", type: "error" });
     }
   };

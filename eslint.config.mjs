@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Standalone CommonJS migration script, run directly via `node`, not part of the app bundle.
+    "fix-layout.js",
   ]),
 ]);
 

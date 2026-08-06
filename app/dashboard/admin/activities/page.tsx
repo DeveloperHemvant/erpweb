@@ -383,7 +383,7 @@ export default function ActivitiesPage() {
                 </div>
               ))
             ) : (
-              <p className="text-text-secondary text-sm">No school houses configured yet. Click "New House" to create the first one.</p>
+              <p className="text-text-secondary text-sm">No school houses configured yet. Click &quot;New House&quot; to create the first one.</p>
             )}
           </div>
         </div>

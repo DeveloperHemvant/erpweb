@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
-import { Search, ShieldAlert, Clock, Terminal } from "lucide-react";
+import { Search, Clock, Terminal } from "lucide-react";
 
 interface AuditLogDef {
   id: string;

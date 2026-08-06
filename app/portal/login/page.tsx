@@ -69,7 +69,7 @@ export default function PortalLogin() {
             </Button>
           </form>
           <div className="mt-6 text-center text-xs text-text-secondary">
-            <p>Don't have an account? Please contact the school administration.</p>
+            <p>Don&apos;t have an account? Please contact the school administration.</p>
           </div>
         </CardContent>
       </Card>

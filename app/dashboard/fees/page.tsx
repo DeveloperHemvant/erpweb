@@ -111,10 +111,6 @@ export default function FeesPage() {
   const [classes, setClasses] = useState<ClassDef[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const handlePrintReceipt = () => {
-    window.print();
-  };
-
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
@@ -1063,10 +1059,6 @@ export default function FeesPage() {
       <Modal isOpen={isReceiptOpen} onClose={() => setIsReceiptOpen(false)} title="Itemized Invoice Slip Preview" size="lg">
         {receiptInvoice && (() => {
           const conc = getConcessionDetails(receiptInvoice.student);
-          const components = classStructures[receiptInvoice.student.grade?.grade] || [
-            { name: "Tuition Fee", amount: 15000 },
-            { name: "Misc School Fee", amount: 3000 }
-          ];
           const totalPaid = receiptInvoice.payments.reduce((sum, p) => sum + parseFloat(p.amountPaid), 0);
           const balance = parseFloat(receiptInvoice.amount) - totalPaid;
 

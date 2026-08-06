@@ -1054,7 +1054,7 @@ function OnlineTestsTab({ questionPapers, questionBanks, schedules, subjectOptio
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>Live Monitor</CardTitle><CardDescription>Who's started, in progress, or submitted</CardDescription></CardHeader>
+          <CardHeader><CardTitle>Live Monitor</CardTitle><CardDescription>Who&apos;s started, in progress, or submitted</CardDescription></CardHeader>
           <CardContent className="space-y-4">
             <Select
               label="Online Schedule" value={monitorScheduleId} onChange={e => loadMonitor(e.target.value)}

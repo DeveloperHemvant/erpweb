@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
-import { Briefcase, Calendar, CheckCircle2, DollarSign } from "lucide-react";
+import { Briefcase, Calendar, DollarSign } from "lucide-react";
 
 export default function StaffDashboard() {
   return (

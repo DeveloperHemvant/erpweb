@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { UserPlus, Plus, Phone, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
@@ -162,8 +162,8 @@ export default function AdmissionsPipelinePage() {
             {detail.status !== "Converted" && (
               <p className="text-xs text-text-secondary">
                 Once registered via Student Admissions, open{" "}
-                <a href={`/applicants/${detail.id}`} className="text-primary underline">this applicant's full page</a>{" "}
-                and use "Link to Student" to connect the two records.
+                <a href={`/applicants/${detail.id}`} className="text-primary underline">this applicant&apos;s full page</a>{" "}
+                and use &quot;Link to Student&quot; to connect the two records.
               </p>
             )}
 

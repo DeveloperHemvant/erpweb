@@ -86,7 +86,6 @@ export default function MasterDataPage() {
   const [classGrade, setClassGrade] = useState("");
   const [classSections, setClassSections] = useState("");
   const [classCampusId, setClassCampusId] = useState("");
-  const [classSessionId, setClassSessionId] = useState("");
   const [subjectName, setSubjectName] = useState("");
   const [subjectGradeId, setSubjectGradeId] = useState("");
   const [subjectMedium, setSubjectMedium] = useState("English");
@@ -154,7 +153,7 @@ export default function MasterDataPage() {
         const sfData = await sfRes.json();
         setStaffList(sfData.data || sfData);
       }
-    } catch (err) {
+    } catch {
       toast("Sync Offline", { description: "NestJS APIs offline.", type: "error" });
     }
   };

@@ -9,7 +9,7 @@ import { Modal } from "@/components/ui/modal";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/toast";
-import { Shield, ShieldAlert, ShieldCheck, Trash2, Settings, Plus } from "lucide-react";
+import { ShieldCheck, Trash2, Plus } from "lucide-react";
 
 interface RoleDef {
   id: string;
@@ -56,7 +56,7 @@ export default function RolesPermissionsPage() {
       if (data.length > 0 && !selectedRoleId) {
         setSelectedRoleId(data[0].id);
       }
-    } catch (err) {
+    } catch {
       toast("Error", { description: "NestJS roles backend endpoint offline.", type: "error" });
     } finally {
       setIsLoading(false);
@@ -92,7 +92,7 @@ export default function RolesPermissionsPage() {
         prev.map((r) => (r.id === role.id ? { ...r, permissions: updatedPermissions } : r))
       );
       toast("Permission Updated", { description: "Synced successfully with PostgreSQL.", type: "success" });
-    } catch (err) {
+    } catch {
       toast("Sync Failed", { description: "Could not persist permission change.", type: "error" });
     }
   };
@@ -298,7 +298,7 @@ export default function RolesPermissionsPage() {
             <div>
               <h4 className="text-sm font-bold text-text-primary">Clearance Level Status Checked</h4>
               <p className="text-xs text-text-secondary leading-relaxed font-medium">
-                Permissions are validated globally at the database level. Super Admin roles are automatically granted wildcard `["*"]` privileges and cannot be unmapped.
+                Permissions are validated globally at the database level. Super Admin roles are automatically granted wildcard `[&quot;*&quot;]` privileges and cannot be unmapped.
               </p>
             </div>
           </div>

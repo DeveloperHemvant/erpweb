@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select } from "@/components/ui/select";
 import { Tabs } from "@/components/ui/tabs";
-import { Modal } from "@/components/ui/modal";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -15,15 +14,8 @@ import {
   Users,
   Clock,
   CheckCircle,
-  AlertTriangle,
-  Search,
-  Fingerprint,
   ChevronLeft,
   ChevronRight,
-  Camera,
-  MapPin,
-  Scan,
-  Compass
 } from "lucide-react";
 
 interface AttendanceRecord {
@@ -46,9 +38,6 @@ export default function AttendancePage() {
   const [selectedMonth, setSelectedMonth] = useState(() => new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [filterMode, setFilterMode] = useState<"daily" | "monthly">("daily");
   const [classOptions, setClassOptions] = useState<{ label: string; value: string }[]>([]);
-  const [terminalRole, setTerminalRole] = useState("Student");
-  const [terminalName, setTerminalName] = useState("");
-  const [terminalStatus, setTerminalStatus] = useState<AttendanceRecord["status"]>("Present");
 
   // Roster lists states
   const [studentRoster, setStudentRoster] = useState<AttendanceRecord[]>([]);
@@ -203,7 +192,7 @@ export default function AttendancePage() {
 
       setHasUnsavedChanges(false);
       toast("Register Saved", { description: "Attendance records synchronized successfully.", type: "success" });
-    } catch (e) {
+    } catch {
       toast("Error", { description: "Failed to save some records.", type: "error" });
     } finally {
       setIsSaving(false);
@@ -224,42 +213,6 @@ export default function AttendancePage() {
     } else {
       setStaffRoster((prev) => prev.map((st) => ({ ...st, status, time })));
     }
-  };
-
-  // Self check-in action
-  const handleSelfCheckIn = (e: React.FormEvent) => {
-    e.preventDefault();
-    const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    if (terminalRole === "Student") {
-      const match = studentRoster.find((s) => s.name === terminalName);
-      if (match) {
-        setStudentRoster((prev) => prev.map((s) => s.id === match.id ? { ...s, status: terminalStatus, time: timeString } : s));
-      } else {
-        // Create dynamic record
-        const newStu: AttendanceRecord = {
-          id: `STU-${Math.floor(100 + Math.random() * 900)}`,
-          name: terminalName,
-          role: "Student",
-          details: "Grade 10B",
-          status: terminalStatus,
-          time: timeString,
-        };
-        setStudentRoster((prev) => [...prev, newStu]);
-      }
-    } else if (terminalRole === "Teacher") {
-      const match = teacherRoster.find((t) => t.name === terminalName);
-      if (match) {
-        setTeacherRoster((prev) => prev.map((t) => t.id === match.id ? { ...t, status: terminalStatus, time: timeString } : t));
-      }
-    } else {
-      const match = staffRoster.find((st) => st.name === terminalName);
-      if (match) {
-        setStaffRoster((prev) => prev.map((st) => st.id === match.id ? { ...st, status: terminalStatus, time: timeString } : st));
-      }
-    }
-
-    toast("Check-in Confirmed", { description: `${terminalName} checked in as ${terminalStatus} at ${timeString}`, type: "success" });
   };
 
   // Calculate aggregates

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
-import { FileText, Save, Plus, Trash2 } from "lucide-react";
+import { Save, Plus, Trash2 } from "lucide-react";
 
 export default function CertificateMakerPage() {
   const { toast } = useToast();
@@ -23,7 +23,7 @@ export default function CertificateMakerPage() {
     try {
       const res = await fetch(`${API_URL}/templates`);
       if (res.ok) setTemplates(await res.json());
-    } catch (e) {
+    } catch {
       toast("Error", { description: "Failed to fetch templates", type: "error" });
     }
   };
@@ -61,7 +61,7 @@ export default function CertificateMakerPage() {
           setActiveTemplate(await res.json());
         }
       }
-    } catch (e) {
+    } catch {
       toast("Error", { description: "Failed to save template", type: "error" });
     }
   };
@@ -117,8 +117,8 @@ export default function CertificateMakerPage() {
     const canvas = e.currentTarget.getBoundingClientRect();
     
     // newX = pointer position - canvas left - offset inside element
-    let newX = Math.round(e.clientX - canvas.left - dragOffset.x);
-    let newY = Math.round(e.clientY - canvas.top - dragOffset.y);
+    const newX = Math.round(e.clientX - canvas.left - dragOffset.x);
+    const newY = Math.round(e.clientY - canvas.top - dragOffset.y);
     
     updateField(draggingIdx, 'x', newX);
     updateField(draggingIdx, 'y', newY);
