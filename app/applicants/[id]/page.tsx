@@ -13,6 +13,8 @@ import { useComments } from "@/hooks/useComments";
 import { useAttachments } from "@/hooks/useAttachments";
 import { getUserFromStorage } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Modal } from "@/components/ui/modal";
 import { SearchSelect, SearchSelectOption } from "@/components/ui/search-select";
 import { useToast } from "@/components/ui/toast";
@@ -52,6 +54,17 @@ export default function ApplicantEntityPage() {
   const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
   const [convertStudent, setConvertStudent] = useState<SearchSelectOption | null>(null);
   const [converting, setConverting] = useState(false);
+
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    fullName: "",
+    guardianName: "",
+    phone: "",
+    parentEmail: "",
+    gender: "",
+    admissionNumber: "",
+  });
 
   const fetchInquiry = () => {
     setLoading(true);
@@ -96,6 +109,42 @@ export default function ApplicantEntityPage() {
     }
   };
 
+  const openCreateModal = () => {
+    setCreateForm({
+      fullName: inquiry.childName || "",
+      guardianName: inquiry.parentName || "",
+      phone: inquiry.phone || "",
+      parentEmail: inquiry.email || "",
+      gender: "",
+      admissionNumber: "",
+    });
+    setIsCreateModalOpen(true);
+  };
+
+  const handleConvertAndCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreating(true);
+    try {
+      const res = await fetch(`${API_URL}/admission-inquiries/${id}/convert-and-create-student`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify(createForm),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Failed to create and link student");
+      }
+      const student = await res.json();
+      toast(`Student created: ${student.fullName}`, { type: "success" });
+      setIsCreateModalOpen(false);
+      fetchInquiry();
+    } catch (err: any) {
+      toast(err.message || "Failed to create and link student", { type: "error" });
+    } finally {
+      setCreating(false);
+    }
+  };
+
   if (loading) return <div className="p-10 text-center text-text-secondary">Loading applicant...</div>;
   if (notFound || !inquiry) {
     return (
@@ -132,9 +181,14 @@ export default function ApplicantEntityPage() {
                 </Button>
               </a>
             ) : (
-              <Button variant="outline" size="sm" onClick={() => setIsConvertModalOpen(true)}>
-                Link to Student
-              </Button>
+              <>
+                <Button variant="primary" size="sm" onClick={openCreateModal}>
+                  Create &amp; Link Student
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setIsConvertModalOpen(true)}>
+                  Link Existing Student
+                </Button>
+              </>
             )}
             <ActionMenu items={buildStandardActions({ isFavorite: favorite.isFavorite, onToggleFavorite: favorite.toggle })} />
           </div>
@@ -221,10 +275,37 @@ export default function ApplicantEntityPage() {
       )}
     </EntityPageShell>
 
-    <Modal isOpen={isConvertModalOpen} onClose={() => setIsConvertModalOpen(false)} title="Link to Student Record">
+    <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="Create & Link Student">
+      <form className="space-y-4 pt-4" onSubmit={handleConvertAndCreate}>
+        <p className="text-sm text-text-secondary">
+          Creates a new Student record pre-filled from this applicant&apos;s inquiry and links it in one step — no need to re-type what was already captured, and no separate search-and-link afterward.
+        </p>
+        <Input label="Full Name" value={createForm.fullName} onChange={(e) => setCreateForm({ ...createForm, fullName: e.target.value })} required />
+        <Input label="Guardian Name" value={createForm.guardianName} onChange={(e) => setCreateForm({ ...createForm, guardianName: e.target.value })} required />
+        <div className="grid grid-cols-2 gap-4">
+          <Input label="Phone" value={createForm.phone} onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })} required />
+          <Select
+            label="Gender"
+            value={createForm.gender}
+            onChange={(e) => setCreateForm({ ...createForm, gender: e.target.value })}
+            options={[{ label: "Select...", value: "" }, { label: "Male", value: "Male" }, { label: "Female", value: "Female" }, { label: "Other", value: "Other" }]}
+          />
+        </div>
+        <Input label="Parent Email" type="email" value={createForm.parentEmail} onChange={(e) => setCreateForm({ ...createForm, parentEmail: e.target.value })} required />
+        <Input label="Admission Number" value={createForm.admissionNumber} onChange={(e) => setCreateForm({ ...createForm, admissionNumber: e.target.value })} required placeholder="e.g. ADM-2027-0142" />
+        <div className="flex justify-end gap-2 pt-4">
+          <Button type="button" variant="outline" onClick={() => setIsCreateModalOpen(false)}>Cancel</Button>
+          <Button type="submit" variant="primary" disabled={creating || !createForm.gender}>
+            {creating ? "Creating..." : "Create & Link"}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+
+    <Modal isOpen={isConvertModalOpen} onClose={() => setIsConvertModalOpen(false)} title="Link to Existing Student Record">
       <form className="space-y-4 pt-4" onSubmit={handleConvert}>
         <p className="text-sm text-text-secondary">
-          If this applicant has already been admitted and registered as a student (via Student Admissions), search for and select that record to permanently link the two — this marks the inquiry Converted and lets both records cross-navigate to each other.
+          Only needed if this applicant was already registered as a student some other way. In the normal flow, use &quot;Create &amp; Link Student&quot; instead — search for and select the existing record to permanently link the two.
         </p>
         <SearchSelect
           label="Student"
