@@ -53,7 +53,8 @@ interface AllocationDef {
   staff?: { fullName: string };
   section?: { name: string, class?: { grade: string, campus?: { name: string } } };
   subject?: { class?: { grade: string, campus?: { name: string } } };
-  workload: string;
+  hoursPerWeek?: number;
+  workload?: string;
   status: string;
   isClassTeacher?: boolean;
 }
@@ -90,7 +91,7 @@ export default function MasterDataPage() {
   const [subjectGradeId, setSubjectGradeId] = useState("");
   const [subjectMedium, setSubjectMedium] = useState("English");
   const [allocSectionId, setAllocSectionId] = useState("");
-  const [allocWorkload, setAllocWorkload] = useState("14 hrs/week");
+  const [allocWorkload, setAllocWorkload] = useState("14");
   const [allocStaffId, setAllocStaffId] = useState("");
   const [staffList, setStaffList] = useState<{ id: string; fullName: string }[]>([]);
 
@@ -616,7 +617,7 @@ export default function MasterDataPage() {
                   <TableRow key={t.id}>
                     <TableCell className="font-medium text-text-primary">{t.staff?.fullName || "Unknown"}</TableCell>
                     <TableCell>{t.section ? `${t.section.class?.grade || ''} - ${t.section.name}` : t.subject?.class?.grade || "N/A"}</TableCell>
-                    <TableCell>{t.workload}</TableCell>
+                    <TableCell>{t.hoursPerWeek !== undefined && t.hoursPerWeek !== null ? `${t.hoursPerWeek} hrs/week` : t.workload || "N/A"}</TableCell>
                     <TableCell>
                       <Badge variant="success">{t.status}</Badge>
                     </TableCell>
@@ -624,7 +625,7 @@ export default function MasterDataPage() {
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0 mr-1" onClick={() => {
                         setEditingRecordId(t.id);
                         setAllocStaffId(t.staff?.fullName ? staffList.find(s => s.fullName === t.staff?.fullName)?.id || "" : "");
-                        setAllocWorkload(t.workload);
+                        setAllocWorkload(t.hoursPerWeek !== undefined && t.hoursPerWeek !== null ? String(t.hoursPerWeek) : t.workload || "");
                         // Simplified setting for dropdowns - might require more complex state matching in production
                         setIsAllocationOpen(true);
                       }}>
@@ -805,7 +806,7 @@ export default function MasterDataPage() {
             onChange={(e) => setAllocSectionId(e.target.value)} 
             options={classes.flatMap(c => c.sections?.map(sec => ({ label: `${c.grade} - ${sec.name} (${c.campus?.name})`, value: sec.id })) || [])} 
           />
-          <Input label="Expected Weekly workload *" required placeholder="e.g. 14 hrs/week" value={allocWorkload} onChange={(e) => setAllocWorkload(e.target.value)} />
+          <Input type="number" label="Expected Weekly workload (hours) *" required placeholder="e.g. 14" value={allocWorkload} onChange={(e) => setAllocWorkload(e.target.value)} min={1} max={100} />
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => setIsAllocationOpen(false)}>Cancel</Button>
             <Button type="submit" variant="primary">Confirm Assignment</Button>

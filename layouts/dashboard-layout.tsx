@@ -48,13 +48,50 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showNotificationsMenu, setShowNotificationsMenu] = useState(false);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
   const MASTER_DATA_API_URL = `${API_URL}/master-data`;
 
+  const fetchNotifications = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      const res = await fetch(`${API_URL}/notifications`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setNotifications(await res.json());
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleMarkNotificationRead = async (id: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      const res = await fetch(`${API_URL}/notifications/${id}/read`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setNotifications(prev => prev.map(n => n.id === id ? { ...n, readStatus: true } : n));
+        toast("Notification Read", { type: "success" });
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     setUserProfile(getUserFromStorage());
     setMounted(true);
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   // Page-level access guard — mirrors the sidebar's own visibility filter so a
@@ -333,13 +370,61 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </button>
 
             {/* Notifications */}
-            <button
-              onClick={() => toast("Notifications", { description: "You have no new alerts", type: "info" })}
-              className="relative text-text-secondary hover:text-text-primary p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
-            >
-              <Bell className="h-4.5 w-4.5" />
-              <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-danger animate-pulse" />
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowNotificationsMenu(!showNotificationsMenu)}
+                className="relative text-text-secondary hover:text-text-primary p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors focus:outline-none"
+              >
+                <Bell className="h-4.5 w-4.5" />
+                {notifications.filter(n => !n.readStatus).length > 0 && (
+                  <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-danger animate-pulse" />
+                )}
+              </button>
+
+              {showNotificationsMenu && (
+                <div className="absolute right-0 mt-2.5 w-80 bg-card border border-border rounded-card shadow-premium py-2 text-sm z-30 max-h-96 overflow-y-auto">
+                  <div className="px-4 py-2 border-b border-border font-bold text-text-primary flex justify-between items-center">
+                    <span>Notifications</span>
+                    {notifications.filter(n => !n.readStatus).length > 0 && (
+                      <span className="text-[10px] px-2 py-0.5 bg-danger/10 text-danger rounded-full">
+                        {notifications.filter(n => !n.readStatus).length} new
+                      </span>
+                    )}
+                  </div>
+                  {notifications.length === 0 ? (
+                    <div className="px-4 py-6 text-center text-text-secondary text-xs">
+                      No notifications yet
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-border/60">
+                      {notifications.map((n) => (
+                        <div
+                          key={n.id}
+                          onClick={() => {
+                            if (!n.readStatus) handleMarkNotificationRead(n.id);
+                          }}
+                          className={cn(
+                            "px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-colors text-left",
+                            !n.readStatus && "bg-primary/5 dark:bg-primary/10"
+                          )}
+                        >
+                          <div className="font-semibold text-xs text-text-primary flex justify-between items-center">
+                            <span>{n.title}</span>
+                            {!n.readStatus && (
+                              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                            )}
+                          </div>
+                          <div className="text-xs text-text-secondary mt-1">{n.body}</div>
+                          <div className="text-[10px] text-text-secondary mt-1">
+                            {new Date(n.createdAt).toLocaleDateString()}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Profile Dropdown */}
             <div className="relative">

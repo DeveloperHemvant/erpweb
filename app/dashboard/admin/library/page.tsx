@@ -1,13 +1,94 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { Tabs } from "@/components/ui/tabs";
-import { BookOpen, BookUp, RefreshCcw } from "lucide-react";
+import { BookOpen, BookUp, RefreshCcw, Search, X } from "lucide-react";
+
+interface LocalSearchSelectProps {
+  label: string;
+  placeholder?: string;
+  value: string;
+  onChange: (val: string) => void;
+  options: { label: string; value: string }[];
+  required?: boolean;
+}
+
+function LocalSearchSelect({ label, placeholder = "Type to search...", value, onChange, options, required }: LocalSearchSelectProps) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectedOpt = options.find((o) => o.value === value);
+  const filteredOptions = options.filter(
+    (o) =>
+      o.label.toLowerCase().includes(query.toLowerCase()) ||
+      o.value.toLowerCase().includes(query.toLowerCase())
+  );
+
+  return (
+    <div className="w-full relative" ref={containerRef}>
+      {label && <label className="block text-xs font-medium text-text-secondary mb-1 ml-1">{label}</label>}
+
+      {selectedOpt ? (
+        <div className="w-full h-10 px-3.5 rounded-input border border-slate-300/80 dark:border-slate-700 bg-slate-50/90 dark:bg-slate-800/80 flex items-center justify-between">
+          <span className="text-sm font-medium text-text-primary truncate">{selectedOpt.label}</span>
+          <button type="button" onClick={() => { onChange(""); setQuery(""); }} className="text-text-secondary hover:text-text-primary ml-2">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      ) : (
+        <div className="relative flex items-center">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+            onFocus={() => setOpen(true)}
+            placeholder={placeholder}
+            className="w-full h-10 pl-3.5 pr-9 rounded-input border border-slate-300/80 dark:border-slate-700 bg-slate-50/90 dark:bg-slate-800/80 text-text-primary text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
+            required={required && !value}
+          />
+          <div className="absolute right-3 text-text-secondary pointer-events-none">
+            <Search className="h-4 w-4" />
+          </div>
+        </div>
+      )}
+
+      {open && !value && (
+        <div className="absolute z-20 mt-1 w-full max-h-60 overflow-y-auto bg-white dark:bg-slate-900 border border-border rounded-lg shadow-premium">
+          {filteredOptions.length === 0 ? (
+            <p className="text-sm text-text-secondary text-center py-3">No matches.</p>
+          ) : (
+            filteredOptions.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => { onChange(opt.value); setOpen(false); setQuery(""); }}
+                className="w-full text-left px-3.5 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer"
+              >
+                <span className="block text-sm font-medium text-text-primary truncate">{opt.label}</span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function LibraryAdminPage() {
   const { toast } = useToast();
@@ -274,8 +355,8 @@ export default function LibraryAdminPage() {
           <CardHeader><CardTitle>Issue a Book</CardTitle></CardHeader>
           <CardContent>
             <form onSubmit={handleIssueBook} className="space-y-4">
-              <Select label="Select Student" value={issueEnrollmentId} onChange={e => setIssueEnrollmentId(e.target.value)} options={[{label: "Select...", value: ""}, ...studentOptions]} required />
-              <Select label="Select Book" value={issueBookId} onChange={e => setIssueBookId(e.target.value)} options={[{label: "Select...", value: ""}, ...bookOptions]} required />
+              <LocalSearchSelect label="Select Student *" value={issueEnrollmentId} onChange={setIssueEnrollmentId} options={studentOptions} required />
+              <LocalSearchSelect label="Select Book *" value={issueBookId} onChange={setIssueBookId} options={bookOptions} required />
               <Input label="Due Date" type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} required />
               <Button type="submit" className="w-full">Issue Book</Button>
             </form>
@@ -306,8 +387,8 @@ export default function LibraryAdminPage() {
             <CardHeader><CardTitle>Create Reservation</CardTitle></CardHeader>
             <CardContent>
               <form onSubmit={handleCreateReservation} className="space-y-4">
-                <Select label="Select Book" value={reserveBookId} onChange={(e) => setReserveBookId(e.target.value)} options={[{ label: "Select...", value: "" }, ...allBookOptions]} required />
-                <Select label="Select Student (enrollment)" value={reserveEnrollmentId} onChange={(e) => setReserveEnrollmentId(e.target.value)} options={[{ label: "Select...", value: "" }, ...studentOptions]} required />
+                <LocalSearchSelect label="Select Book *" value={reserveBookId} onChange={setReserveBookId} options={allBookOptions} required />
+                <LocalSearchSelect label="Select Student (enrollment) *" value={reserveEnrollmentId} onChange={setReserveEnrollmentId} options={studentOptions} required />
                 <Button type="submit" className="w-full">Reserve</Button>
               </form>
             </CardContent>

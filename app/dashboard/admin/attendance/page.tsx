@@ -199,6 +199,23 @@ export default function AttendancePage() {
     }
   };
 
+  const handleHistoryStatusUpdate = async (id: string, newStatus: "Present" | "Absent" | "Late" | "Leave") => {
+    try {
+      const res = await fetch(`${API_URL}/erp-core/attendance/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (!res.ok) throw new Error("Failed to correct attendance.");
+      
+      // Update local state in history list
+      setHistoryList((prev) => prev.map((h) => h.id === id ? { ...h, status: newStatus } : h));
+      toast("Attendance Corrected", { description: `Corrected status to ${newStatus} successfully.`, type: "success" });
+    } catch (e) {
+      toast("Error", { description: "Failed to correct attendance.", type: "error" });
+    }
+  };
+
   const openSubModal = (teacherName: string) => {
     toast("Substitute Lookup", { description: `Find a substitute for ${teacherName} from the Timetable page, where period/subject context is available.`, type: "info" });
   };
@@ -338,6 +355,7 @@ export default function AttendancePage() {
                         <TableHead>Check-In</TableHead>
                         <TableHead>Check-Out</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </>
                     ) : (
                       <>
@@ -531,6 +549,22 @@ export default function AttendancePage() {
                           }>
                             {row.status}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="inline-flex gap-2 p-1 bg-slate-50 dark:bg-slate-900 rounded-md border border-border">
+                            {(["Present", "Absent", "Late", "Leave"] as const).map((st) => (
+                              <label key={st} className="flex items-center gap-1.5 cursor-pointer">
+                                <input 
+                                  type="radio" 
+                                  name={`status-hist-${row.id}`} 
+                                  checked={row.status === st}
+                                  onChange={() => handleHistoryStatusUpdate(row.id, st)}
+                                  className="w-3.5 h-3.5 text-primary focus:ring-primary"
+                                />
+                                <span className={`text-[11px] font-semibold ${row.status === st ? "text-primary" : "text-text-secondary"}`}>{st}</span>
+                              </label>
+                            ))}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

@@ -43,7 +43,7 @@ export default function TransportManagementPage() {
   const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
   const [isAddRouteOpen, setIsAddRouteOpen] = useState(false);
   const [isAssignStaffOpen, setIsAssignStaffOpen] = useState(false);
-  const [, setIsAddStopOpen] = useState(false);
+  const [isAddStopOpen, setIsAddStopOpen] = useState(false);
   const [isVehicleProfileOpen, setIsVehicleProfileOpen] = useState(false);
   const [isAddFuelOpen, setIsAddFuelOpen] = useState(false);
   const [isLogServiceOpen, setIsLogServiceOpen] = useState(false);
@@ -76,10 +76,11 @@ export default function TransportManagementPage() {
   }>({ routeName: "", distance: 0, estimatedTime: "", vehicleId: "", stops: [] });
   
   // Selection
-  const [, setSelectedRouteId] = useState("");
+  const [selectedRouteId, setSelectedRouteId] = useState("");
   const [selectedVehicleId, setSelectedVehicleId] = useState("");
   const [assignStaffForm, setAssignStaffForm] = useState({ staffId: "", shift: "Driver - Morning" });
   const [assignStudentForm, setAssignStudentForm] = useState({ enrollmentId: "", stopData: "", morningPickup: true, afternoonDrop: true });
+  const [stopForm, setStopForm] = useState({ stopName: "", arrivalTime: "08:00 AM", orderIndex: 0 });
 
   useEffect(() => {
     fetchData();
@@ -204,6 +205,31 @@ export default function TransportManagementPage() {
       }
     } catch {
       toast("Error", { description: "Failed to assign student", type: "error" });
+    }
+  };
+
+  const handleAddStop = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stopForm.stopName || !selectedRouteId) return;
+    try {
+      const res = await fetch(`${API_URL}/transport/routes/${selectedRouteId}/stops`, {
+        method: "POST", headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify({
+          stopName: stopForm.stopName,
+          arrivalTime: stopForm.arrivalTime,
+          orderIndex: Number(stopForm.orderIndex)
+        })
+      });
+      if (res.ok) {
+        toast("Success", { description: "Stop added successfully", type: "success" });
+        setIsAddStopOpen(false);
+        setStopForm({ stopName: "", arrivalTime: "08:00 AM", orderIndex: 0 });
+        fetchData();
+      } else {
+        toast("Error", { description: "Failed to add stop", type: "error" });
+      }
+    } catch {
+      toast("Error", { description: "Failed to add stop", type: "error" });
     }
   };
 
@@ -1141,6 +1167,16 @@ export default function TransportManagementPage() {
             </label>
           </div>
           <div className="flex justify-end pt-4"><Button type="submit" variant="primary">Assign</Button></div>
+        </form>
+      </Modal>
+      <Modal isOpen={isAddStopOpen} onClose={() => setIsAddStopOpen(false)} title="Add Route Stop">
+        <form className="space-y-4 pt-4" onSubmit={handleAddStop}>
+          <Input label="Stop Name *" value={stopForm.stopName} onChange={e => setStopForm({ ...stopForm, stopName: e.target.value })} required />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Arrival Time (e.g. 08:30 AM)" value={stopForm.arrivalTime} onChange={e => setStopForm({ ...stopForm, arrivalTime: e.target.value })} />
+            <Input label="Order Index" type="number" value={String(stopForm.orderIndex)} onChange={e => setStopForm({ ...stopForm, orderIndex: Number(e.target.value) })} required />
+          </div>
+          <div className="flex justify-end pt-4"><Button type="submit" variant="primary">Add Stop</Button></div>
         </form>
       </Modal>
     </>
