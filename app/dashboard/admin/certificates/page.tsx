@@ -15,6 +15,15 @@ export default function CertificateMakerPage() {
   const [templates, setTemplates] = useState<any[]>([]);
   const [activeTemplate, setActiveTemplate] = useState<any>(null);
 
+  // Issue Certificate
+  const [issueQuery, setIssueQuery] = useState("");
+  const [issueResults, setIssueResults] = useState<any[]>([]);
+  const [issueStudent, setIssueStudent] = useState<any | null>(null);
+  const [issueTitle, setIssueTitle] = useState("");
+  const [issueType, setIssueType] = useState("MERIT");
+  const [issuedCertificates, setIssuedCertificates] = useState<any[]>([]);
+  const [issuing, setIssuing] = useState(false);
+
   useEffect(() => {
     fetchTemplates();
   }, []);
@@ -31,8 +40,8 @@ export default function CertificateMakerPage() {
   const handleCreateNew = () => {
     setActiveTemplate({
       name: "New Template",
-      type: "ID_CARD",
-      targetAudience: "STAFF",
+      type: "CERTIFICATE",
+      targetAudience: "STUDENT",
       designJson: {
         backgroundUrl: "https://via.placeholder.com/240x380?text=Background",
         fields: [
@@ -63,6 +72,59 @@ export default function CertificateMakerPage() {
       }
     } catch {
       toast("Error", { description: "Failed to save template", type: "error" });
+    }
+  };
+
+  const searchStudentsForIssue = async (q: string) => {
+    setIssueQuery(q);
+    if (q.trim().length < 2) { setIssueResults([]); return; }
+    try {
+      const res = await fetch(`${API_URL}/search?q=${encodeURIComponent(q)}`);
+      if (res.ok) {
+        const all = await res.json();
+        setIssueResults(all.filter((r: any) => r.entityType === "student"));
+      }
+    } catch {
+      // silent -- search-as-you-type shouldn't toast on every keystroke failure
+    }
+  };
+
+  const fetchIssuedCertificates = async (templateId: string) => {
+    try {
+      const res = await fetch(`${API_URL}/templates/${templateId}/certificates`);
+      if (res.ok) setIssuedCertificates(await res.json());
+    } catch {
+      // non-fatal, list just stays empty
+    }
+  };
+
+  const handleIssueCertificate = async () => {
+    if (!activeTemplate?.id || !issueStudent || !issueTitle.trim()) {
+      toast("Validation", { description: "Select a student and enter a title.", type: "error" });
+      return;
+    }
+    setIssuing(true);
+    try {
+      const res = await fetch(`${API_URL}/templates/${activeTemplate.id}/certificates`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId: issueStudent.id, type: issueType, title: issueTitle.trim() }),
+      });
+      if (res.ok) {
+        toast("Success", { description: `Certificate issued to ${issueStudent.title}.`, type: "success" });
+        setIssueStudent(null);
+        setIssueQuery("");
+        setIssueResults([]);
+        setIssueTitle("");
+        fetchIssuedCertificates(activeTemplate.id);
+      } else {
+        const body = await res.json().catch(() => ({}));
+        toast("Error", { description: body.message || "Failed to issue certificate.", type: "error" });
+      }
+    } catch {
+      toast("Error", { description: "Failed to issue certificate.", type: "error" });
+    } finally {
+      setIssuing(false);
     }
   };
 
@@ -156,7 +218,15 @@ export default function CertificateMakerPage() {
                 <div 
                   key={t.id} 
                   className={`p-3 rounded-card border cursor-pointer transition-colors ${activeTemplate?.id === t.id ? 'border-primary bg-primary/5' : 'border-border hover:bg-slate-50'}`}
-                  onClick={() => setActiveTemplate(t)}
+                  onClick={() => {
+                    setActiveTemplate(t);
+                    setIssueStudent(null);
+                    setIssueQuery("");
+                    setIssueResults([]);
+                    setIssueTitle("");
+                    setIssuedCertificates([]);
+                    if (t.type === "CERTIFICATE") fetchIssuedCertificates(t.id);
+                  }}
                 >
                   <p className="text-sm font-semibold">{t.name}</p>
                   <p className="text-xs text-text-secondary">{t.type} - {t.targetAudience}</p>
@@ -299,6 +369,66 @@ export default function CertificateMakerPage() {
             <div className="h-full flex items-center justify-center text-text-secondary border rounded-card bg-slate-50">
               Select a template to edit or create a new one.
             </div>
+          )}
+
+          {activeTemplate?.id && activeTemplate.type === "CERTIFICATE" && (
+            <Card className="mt-6">
+              <CardHeader><CardTitle>Issue Certificate</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="relative">
+                    <Input
+                      label="Student"
+                      placeholder="Search by name or admission number..."
+                      value={issueStudent ? issueStudent.title : issueQuery}
+                      onChange={(e) => { setIssueStudent(null); searchStudentsForIssue(e.target.value); }}
+                    />
+                    {issueResults.length > 0 && !issueStudent && (
+                      <div className="absolute z-10 mt-1 w-full bg-white border border-border rounded-card shadow-lg max-h-48 overflow-y-auto">
+                        {issueResults.map((s) => (
+                          <div
+                            key={s.id}
+                            className="px-3 py-2 text-sm hover:bg-slate-50 cursor-pointer"
+                            onClick={() => { setIssueStudent(s); setIssueResults([]); }}
+                          >
+                            {s.title}
+                            {s.subtitle ? <span className="text-text-secondary"> — {s.subtitle}</span> : null}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <Select
+                    label="Type"
+                    value={issueType}
+                    onChange={(e) => setIssueType(e.target.value)}
+                    options={[
+                      { label: "Merit", value: "MERIT" },
+                      { label: "Participation", value: "PARTICIPATION" },
+                      { label: "Completion", value: "COMPLETION" },
+                    ]}
+                  />
+                </div>
+                <Input label="Certificate Title" placeholder="e.g. Merit Certificate" value={issueTitle} onChange={(e) => setIssueTitle(e.target.value)} />
+                <Button onClick={handleIssueCertificate} disabled={issuing || !issueStudent || !issueTitle.trim()}>
+                  {issuing ? "Issuing..." : "Issue Certificate"}
+                </Button>
+
+                {issuedCertificates.length > 0 && (
+                  <div className="mt-4 border-t pt-4">
+                    <h4 className="font-semibold text-sm mb-2">Issued from this template</h4>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {issuedCertificates.map((c) => (
+                        <div key={c.id} className="flex justify-between text-sm px-3 py-2 rounded-card border border-border">
+                          <span>{c.title} <span className="text-text-secondary">({c.type})</span></span>
+                          <span className="text-text-secondary">{new Date(c.issueDate).toLocaleDateString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           )}
         </div>
       </div>
