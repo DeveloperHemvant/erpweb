@@ -30,7 +30,7 @@ pipeline {
                     branches: [[name: '*/main']],
                     userRemoteConfigs: [[
                         credentialsId: 'github-creds',
-                        url: 'https://github.com/DeveloperHemvant/erpapp.git'
+                        url: 'https://github.com/DeveloperHemvant/erpweb.git'
                     ]]
                 ])
             }
