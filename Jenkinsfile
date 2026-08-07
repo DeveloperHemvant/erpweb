@@ -2,40 +2,93 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = 'school-erp-web-app'
-        REGISTRY = 'my-registry:5000'
+        AWS_ACCOUNT_ID = credentials('ACCOUNT_ID')
+        AWS_DEFAULT_REGION = "ap-south-1"
+        IMAGE_REPO_NAME = "ecr-frontend"
+        IMAGE_TAG = "latest"
+        REPOSITORY_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${IMAGE_REPO_NAME}"
+        IMAGE_NAME = "${REPOSITORY_URI}:${IMAGE_TAG}"
     }
 
     stages {
-        stage('Checkout') {
+
+        stage('Logging into AWS ECR') {
             steps {
-                checkout scm
+                script {
+                    sh """
+                        aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | \
+                        docker login --username AWS --password-stdin ${REPOSITORY_URI}
+                    """
+                }
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Cloning Git') {
             steps {
-                sh 'npm ci'
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    userRemoteConfigs: [[
+                        credentialsId: 'github-creds',
+                        url: 'https://github.com/DeveloperHemvant/erpweb.git'
+                    ]]
+                ])
             }
         }
 
-        stage('Build Frontend Asset Validation') {
+        stage('Copy env file') {
             steps {
-                sh 'npm run build'
+                sh 'rm -f .env'
+                withCredentials([file(credentialsId: 'FRONTEND_ENV_FILE', variable: 'ENV_FILE')]) {
+                    sh '''
+                        cp "$ENV_FILE" .env
+                    '''
+                }
             }
         }
 
-        stage('Build & Push Docker Image') {
+        stage('Build Docker Image') {
             steps {
-                sh "docker build -t ${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER} ."
-                sh "docker push ${REGISTRY}/${DOCKER_IMAGE}:${BUILD_NUMBER}"
+                sh 'docker build -t ${IMAGE_REPO_NAME}:${IMAGE_TAG} .'
             }
         }
 
-        stage('Deploy') {
+        stage('Tag & Push to ECR') {
             steps {
-                sh "docker compose up -d --no-deps --build web-app"
+                sh '''
+                    docker tag ${IMAGE_REPO_NAME}:${IMAGE_TAG} ${IMAGE_NAME}
+                    docker push ${IMAGE_NAME}
+                '''
             }
+        }
+
+        stage('Start Container') {
+            steps {
+                script {
+                    sh """
+                        docker compose down
+                        docker compose up -d --force-recreate
+                    """
+                }
+            }
+        }
+
+        stage('Clean up workspace') {
+            steps {
+                script {
+                    echo 'Cleaning up Docker images...'
+                    sh 'docker image prune -f'
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline run succeeded.'
+        }
+        failure {
+            echo 'Pipeline run failed.'
         }
     }
 }

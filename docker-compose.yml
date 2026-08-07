@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  ecr-frontend:
+    image: 463064778855.dkr.ecr.ap-south-1.amazonaws.com/ecr-frontend:latest
+    container_name: ecr-frontend
+    ports:
+      - "3001:3000"
+    restart: unless-stopped
+    networks:
+      - frontend_network
+
+networks:
+  frontend_network:
+    driver: bridge
